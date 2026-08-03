@@ -756,12 +756,8 @@ function buildCssTransform(rotation: PieceRotation, mirrored: PieceMirror) {
   return transforms.length > 0 ? transforms.join(" ") : undefined;
 }
 
-function shouldPreserveTextCase(pieceKey: PieceKey, index: number) {
-  return pieceKey === "button.sign.sealedCounter" && index === 0;
-}
-
-function getTextMaxLength(layout: TextLayout) {
-  return layout.label === "Note" ? undefined : layout.maxLength;
+function getTextMaxLength() {
+  return undefined;
 }
 
 function isDefaultTextSize(pieceKey: PieceKey, text: PieceText | undefined, textSize: PieceTextSize | undefined) {
@@ -1215,9 +1211,7 @@ function sanitizeTextValue(pieceKey: PieceKey, value: PieceText | undefined) {
     return undefined;
   }
 
-  const normalized = normalizeTextValues(value, layouts).map((entry, index) =>
-    shouldPreserveTextCase(pieceKey, index) ? entry.trim() : entry.trim().toUpperCase(),
-  );
+  const normalized = normalizeTextValues(value, layouts).map((entry) => entry.trim());
   if (normalized.every((entry) => entry.length === 0)) {
     return undefined;
   }
@@ -1506,7 +1500,7 @@ export default function BoardDemo() {
     const layouts = getTextLayouts(exactSelectedPiece.pieceKey);
     const normalized = normalizeTextValues(exactSelectedPiece.text, layouts);
     const nextValues = [...normalized];
-    nextValues[index] = shouldPreserveTextCase(exactSelectedPiece.pieceKey, index) ? value : value.toUpperCase();
+    nextValues[index] = value;
     const nextText = nextValues.length === 1 ? nextValues[0] : nextValues;
 
     setPieces((current) =>

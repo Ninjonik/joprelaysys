@@ -75,14 +75,11 @@ function CatalogCard({
           <span>{layout.label}</span>
           <input
             type="text"
-            maxLength={layout.maxLength ?? 24}
             value={normalizedText[index] ?? ""}
             onChange={(event) =>
               setTextValues((current) => {
                 const next = [...current];
-                next[index] = pieceKey === "button.sign.sealedCounter" && index === 0
-                  ? event.target.value
-                  : event.target.value.toUpperCase();
+                next[index] = event.target.value;
                 return next;
               })
             }

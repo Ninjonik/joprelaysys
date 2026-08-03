@@ -349,7 +349,6 @@
 .field input,
 .field textarea {
   font-family: Consolas, "Courier New", monospace;
-  text-transform: uppercase;
 }
 
 .field textarea {

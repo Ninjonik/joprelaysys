@@ -1,36 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import styles from "./page.module.css";
 import catalogData from "./data/piece-catalog.json";
 
 type PieceCatalog = typeof catalogData;
-type PieceKey = keyof PieceCatalog["pieces"];
-type PieceDefinition = PieceCatalog["pieces"][PieceKey];
-type PieceText = string | string[];
-
-type SceneElement = {
-  id: string;
-  pieceKey: PieceKey;
-  x: number;
-  y: number;
-  state?: string;
-  overlayState?: string;
-  text?: PieceText;
-  label?: string;
-  onClick?: () => void;
-};
-
-const HORIZONTAL_TILE_COUNT = 30;
-const PREVIEW_TILE = 46;
-const SVG_TILE_UNIT = 75;
-
-const pieceEntries = Object.entries(catalogData.pieces) as [PieceKey, PieceDefinition][];
-
-const selectorCycle = ["left", "center", "right"] as const;
-const occupancyCycle = ["clear", "occupied"] as const;
+export type PieceKey = keyof PieceCatalog["pieces"];
+export type PieceDefinition = PieceCatalog["pieces"][PieceKey];
+export type PieceText = string | string[];
 
 type OverlayLamp = {
   x: number;
@@ -63,6 +42,33 @@ type SwitchOverlayShape = OverlayRect & {
   transform?: string;
   clip?: OverlayRect;
 };
+
+type SwitchRoute = "normal" | "reverse" | "stem" | "upper";
+type SwitchAspect = "clear" | "reserved" | "occupied" | "moving";
+
+type GridCell = {
+  x: number;
+  y: number;
+};
+
+type PlacedPiece = {
+  id: string;
+  pieceKey: PieceKey;
+  x: number;
+  y: number;
+  state: string;
+  text?: PieceText;
+};
+
+const INITIAL_COLUMNS = 24;
+const INITIAL_ROWS = 14;
+const BOARD_TILE = 42;
+const PREVIEW_TILE = 38;
+const SVG_TILE_UNIT = 75;
+const PLACEABLE_EXCLUSIONS = new Set<PieceKey>(["board.base"]);
+
+export const pieceEntries = Object.entries(catalogData.pieces) as [PieceKey, PieceDefinition][];
+const placeableEntries = pieceEntries.filter(([pieceKey]) => !PLACEABLE_EXCLUSIONS.has(pieceKey));
 
 const SWITCH_GEOMETRY = {
   "switch.single": {
@@ -321,8 +327,13 @@ const TEXT_LAYOUTS: Partial<Record<PieceKey, TextLayout[]>> = {
   "sign.fourLabel": [{ x: 4.99, y: 28.4, width: 290.01, height: 31.94, label: "Text", fontSize: 20, letterSpacing: 0.8, maxLength: 24 }],
 };
 
-type SwitchRoute = "normal" | "reverse" | "stem" | "upper";
-type SwitchAspect = "clear" | "reserved" | "occupied" | "moving";
+export function getStateOptions(piece: PieceDefinition) {
+  return "states" in piece.stateModel ? piece.stateModel.states : [];
+}
+
+export function getDefaultState(piece: PieceDefinition) {
+  return "defaultState" in piece.stateModel ? piece.stateModel.defaultState : "static";
+}
 
 function getSwitchColor(aspect: SwitchAspect) {
   if (aspect === "occupied") return "#f05454";
@@ -358,14 +369,6 @@ function parseSwitchState(pieceKey: PieceKey, rawState: string) {
   const aspect = (["clear", "reserved", "occupied"].includes(aspectPart) ? aspectPart : "clear") as SwitchAspect;
 
   return { route, aspect, pulse: false };
-}
-
-function getStateOptions(piece: PieceDefinition) {
-  return "states" in piece.stateModel ? piece.stateModel.states : [];
-}
-
-function getDefaultState(piece: PieceDefinition) {
-  return "defaultState" in piece.stateModel ? piece.stateModel.defaultState : "static";
 }
 
 function getStateColor(kind: string, state: string) {
@@ -417,11 +420,6 @@ function getStateColor(kind: string, state: string) {
   }
 
   return "#c5ccd0";
-}
-
-function nextValue<T extends readonly string[]>(values: T, current: string) {
-  const index = values.indexOf(current as T[number]);
-  return values[(index + 1) % values.length] as T[number];
 }
 
 function getSwitchGeometry(pieceKey: PieceKey, state: string) {
@@ -477,25 +475,36 @@ function getTrackOverlayRects(pieceKey: PieceKey) {
   return TRACK_OVERLAY_RECTS[pieceKey] ?? [];
 }
 
-function getTextLayouts(pieceKey: PieceKey) {
+export function getTextLayouts(pieceKey: PieceKey) {
   return TEXT_LAYOUTS[pieceKey] ?? [];
 }
 
-function normalizeTextValues(text: PieceText | undefined, layouts: TextLayout[]) {
+export function normalizeTextValues(text: PieceText | undefined, layouts: TextLayout[]) {
   const values = Array.isArray(text) ? text : [text ?? ""];
   return layouts.map((layout, index) => values[index] ?? (layouts.length === 1 ? values[0] ?? "" : ""));
 }
 
-function getDefaultTextValues(pieceKey: PieceKey, layouts: TextLayout[]) {
+export function getDefaultTextValues(pieceKey: PieceKey, layouts: TextLayout[]) {
   if (pieceKey === "button.lineblock") {
     return ["A", "B", "C", "D", "E"];
   }
 
-  return layouts.map((layout, index) => {
+  return layouts.map((_, index) => {
     if (pieceKey.startsWith("switch.single")) return "A6030";
     if (pieceKey.startsWith("switch.extended")) return index === 0 ? "A6030" : "A6031";
     return "ABCD";
   });
+}
+
+export function getInitialTextForPiece(pieceKey: PieceKey) {
+  const layouts = getTextLayouts(pieceKey);
+
+  if (layouts.length === 0) {
+    return undefined;
+  }
+
+  const defaults = getDefaultTextValues(pieceKey, layouts);
+  return layouts.length === 1 ? defaults[0] : defaults;
 }
 
 function getTextFontSize(layout: TextLayout, value: string) {
@@ -548,26 +557,23 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
   const kind = piece.stateModel.kind;
   const width = piece.bounds.width * SVG_TILE_UNIT;
   const height = piece.bounds.height * SVG_TILE_UNIT;
-  const color = getStateColor(kind, state);
-  const nodes: React.ReactNode[] = [];
+  const nodes: ReactNode[] = [];
 
-  if (kind === "trackOccupancy") {
-    if (state !== "clear") {
-      nodes.push(
-        ...getTrackOverlayRects(pieceKey).map((rect, index) => (
-          <rect
-            key={`track-rect-${index}`}
-            x={rect.x}
-            y={rect.y}
-            width={rect.width}
-            height={rect.height}
-            rx={rect.rx}
-            fill={color}
-            opacity={0.92}
-          />
-        )),
-      );
-    }
+  if (kind === "trackOccupancy" && state !== "clear") {
+    nodes.push(
+      ...getTrackOverlayRects(pieceKey).map((rect, index) => (
+        <rect
+          key={`track-rect-${index}`}
+          x={rect.x}
+          y={rect.y}
+          width={rect.width}
+          height={rect.height}
+          rx={rect.rx}
+          fill={getStateColor(kind, state)}
+          opacity={0.92}
+        />
+      )),
+    );
   }
 
   if (kind === "switchPosition") {
@@ -603,12 +609,7 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
             return (
               <g key={`switch-group-${index}`}>
                 <clipPath id={clipId}>
-                  <rect
-                    x={shape.clip.x}
-                    y={shape.clip.y}
-                    width={shape.clip.width}
-                    height={shape.clip.height}
-                  />
+                  <rect x={shape.clip.x} y={shape.clip.y} width={shape.clip.width} height={shape.clip.height} />
                 </clipPath>
                 <g clipPath={`url(#${clipId})`}>{rectNode}</g>
               </g>
@@ -616,9 +617,8 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
           }),
         );
       } else {
-        const paths = getSwitchGeometry(pieceKey, state);
         nodes.push(
-          ...paths.map((path) => (
+          ...getSwitchGeometry(pieceKey, state).map((path) => (
             <path
               key={path}
               d={path}
@@ -637,9 +637,8 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
   }
 
   if (kind === "signalAspect") {
-    const lamps = getSignalLampLayout(pieceKey, state);
     nodes.push(
-      ...lamps.map((lamp) => (
+      ...getSignalLampLayout(pieceKey, state).map((lamp) => (
         <circle
           key={`${lamp.x}-${lamp.y}-${lamp.color}`}
           cx={lamp.x}
@@ -668,9 +667,8 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
   }
 
   if (kind === "indicator") {
-    const lamps = getControlLampLayout(pieceKey, state);
     nodes.push(
-      ...lamps.map((lamp) => (
+      ...getControlLampLayout(pieceKey, state).map((lamp) => (
         <circle
           key={`${lamp.x}-${lamp.y}-${lamp.color}`}
           cx={lamp.x}
@@ -699,9 +697,8 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
   }
 
   if (kind === "momentaryCommand" || kind === "sealedCommand") {
-    const lamps = getControlLampLayout(pieceKey, state);
     nodes.push(
-      ...lamps.map((lamp) => (
+      ...getControlLampLayout(pieceKey, state).map((lamp) => (
         <circle
           key={`${lamp.x}-${lamp.y}-${lamp.color}`}
           cx={lamp.x}
@@ -727,451 +724,581 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
   );
 }
 
-function PiecePreview({
+export function PiecePreview({
   pieceKey,
   piece,
   state,
-  overlayState,
   text,
   tileSize,
-  onClick,
-  label,
 }: {
   pieceKey: PieceKey;
   piece: PieceDefinition;
   state: string;
-  overlayState?: string;
   text?: PieceText;
   tileSize: number;
-  onClick?: () => void;
-  label?: string;
 }) {
   const width = piece.bounds.width * tileSize;
   const height = piece.bounds.height * tileSize;
-  const caption = label ?? pieceKey;
 
   return (
-    <button
-      type="button"
-      className={`${styles.piecePreview} ${onClick ? styles.piecePreviewInteractive : ""}`}
-      style={{ width, height }}
-      onClick={onClick}
-      disabled={!onClick}
-      aria-label={`${caption} (${state})`}
-    >
+    <div className={styles.piecePreview} style={{ width, height }}>
       <Image src={piece.asset} alt="" fill unoptimized sizes={`${width}px`} className={styles.pieceArt} draggable="false" />
-      {renderOverlay(pieceKey, piece, overlayState ?? state, text)}
-    </button>
-  );
-}
-
-function SceneBoard({
-  elements,
-  columns,
-  rows,
-  tileSize,
-}: {
-  elements: SceneElement[];
-  columns: number;
-  rows: number;
-  tileSize: number;
-}) {
-  return (
-    <div
-      className={styles.sceneBoard}
-      style={
-        {
-          width: columns * tileSize,
-          height: rows * tileSize,
-          "--scene-columns": columns,
-          "--scene-rows": rows,
-          "--scene-tile": `${tileSize}px`,
-        } as CSSProperties
-      }
-    >
-      {elements.map((element) => {
-        const piece = catalogData.pieces[element.pieceKey];
-        const state = element.state ?? getDefaultState(piece);
-
-        return (
-          <div
-            key={element.id}
-            className={styles.sceneElement}
-            style={{
-              left: element.x * tileSize,
-              top: element.y * tileSize,
-              width: piece.bounds.width * tileSize,
-              height: piece.bounds.height * tileSize,
-            }}
-          >
-            <PiecePreview
-              pieceKey={element.pieceKey}
-              piece={piece}
-              state={state}
-              overlayState={element.overlayState}
-              text={element.text}
-              tileSize={tileSize}
-              onClick={element.onClick}
-              label={element.label}
-            />
-          </div>
-        );
-      })}
+      {renderOverlay(pieceKey, piece, state, text)}
     </div>
   );
 }
 
-function CatalogCard({
-  pieceKey,
-  piece,
-}: {
-  pieceKey: PieceKey;
-  piece: PieceDefinition;
-}) {
-  const options = getStateOptions(piece);
-  const [state, setState] = useState(getDefaultState(piece));
-  const textLayouts = getTextLayouts(pieceKey);
-  const [textValues, setTextValues] = useState(() => getDefaultTextValues(pieceKey, textLayouts));
-  const overlayText = textLayouts.length <= 1 ? textValues[0] ?? "" : textValues;
+function sortCells(cells: GridCell[]) {
+  return [...cells].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+}
 
-  return (
-    <article className={styles.catalogCard}>
-      <header className={styles.catalogCardHeader}>
-        <div>
-          <h3>{pieceKey}</h3>
-          <p>
-            {piece.category} · {piece.bounds.width}x{piece.bounds.height} tiles
-          </p>
-        </div>
-        <span className={styles.layerTag}>{piece.layer}</span>
-      </header>
+function isSameCell(a: GridCell, b: GridCell) {
+  return a.x === b.x && a.y === b.y;
+}
 
-      <div className={styles.catalogPreview}>
-        <PiecePreview pieceKey={pieceKey} piece={piece} state={state} text={overlayText} tileSize={PREVIEW_TILE} />
-      </div>
+function toggleCell(selection: GridCell[], cell: GridCell) {
+  const exists = selection.some((entry) => isSameCell(entry, cell));
+  if (exists) {
+    return selection.filter((entry) => !isSameCell(entry, cell));
+  }
 
-      <div className={styles.catalogMeta}>
-        <p className={styles.metaLine}>occupied: {piece.occupied.map((cell) => `[${cell.join(", ")}]`).join(" ")}</p>
-        <p className={styles.metaLine}>state model: {piece.stateModel.kind}</p>
-      </div>
+  return sortCells([...selection, cell]);
+}
 
-      {options.length > 0 ? (
-        <label className={styles.statePicker}>
-          <span>State</span>
-          <select value={state} onChange={(event) => setState(event.target.value)}>
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <div className={styles.staticLabel}>Static asset</div>
-      )}
+function getSelectionOrigin(cells: GridCell[]) {
+  return {
+    x: Math.min(...cells.map((cell) => cell.x)),
+    y: Math.min(...cells.map((cell) => cell.y)),
+  };
+}
 
-      {textLayouts.map((layout, index) => (
-        <label key={`${pieceKey}-${layout.label}-${index}`} className={styles.statePicker}>
-          <span>{layout.label}</span>
-          <input
-            className={styles.textInput}
-            value={textValues[index] ?? ""}
-            maxLength={layout.maxLength ?? 12}
-            onChange={(event) =>
-              setTextValues((current) => {
-                const next = [...current];
-                next[index] = event.target.value.toUpperCase();
-                return next;
-              })
-            }
-          />
-        </label>
-      ))}
-    </article>
+function normalizeSelection(cells: GridCell[]) {
+  if (cells.length === 0) {
+    return [];
+  }
+
+  const origin = getSelectionOrigin(cells);
+  return sortCells(
+    cells.map((cell) => ({
+      x: cell.x - origin.x,
+      y: cell.y - origin.y,
+    })),
+  );
+}
+
+function getPieceOccupiedCells(placedPiece: PlacedPiece) {
+  const definition = catalogData.pieces[placedPiece.pieceKey];
+  return definition.occupied.map(([offsetX, offsetY]) => ({
+    x: placedPiece.x + offsetX,
+    y: placedPiece.y + offsetY,
+  }));
+}
+
+function selectionMatchesPiece(selection: GridCell[], placedPiece: PlacedPiece) {
+  if (selection.length === 0) {
+    return false;
+  }
+
+  const pieceCells = getPieceOccupiedCells(placedPiece);
+  if (pieceCells.length !== selection.length) {
+    return false;
+  }
+
+  const normalizedSelection = normalizeSelection(selection);
+  const normalizedPiece = normalizeSelection(pieceCells);
+
+  return normalizedSelection.every((cell, index) => isSameCell(cell, normalizedPiece[index]));
+}
+
+function getCompatiblePieces(selection: GridCell[]) {
+  if (selection.length === 0) {
+    return [];
+  }
+
+  const normalizedSelection = normalizeSelection(selection);
+
+  return placeableEntries.filter(([, piece]) => {
+    if (piece.occupied.length !== normalizedSelection.length) {
+      return false;
+    }
+
+    const normalizedPiece = sortCells(piece.occupied.map(([x, y]) => ({ x, y })));
+    return normalizedPiece.every((cell, index) => isSameCell(cell, normalizedSelection[index]));
+  });
+}
+
+function intersectsSelection(placedPiece: PlacedPiece, selection: GridCell[]) {
+  const occupiedCells = getPieceOccupiedCells(placedPiece);
+  return occupiedCells.some((cell) => selection.some((selected) => isSameCell(cell, selected)));
+}
+
+function sanitizeTextValue(pieceKey: PieceKey, value: PieceText | undefined) {
+  const layouts = getTextLayouts(pieceKey);
+
+  if (layouts.length === 0 || value === undefined) {
+    return undefined;
+  }
+
+  const normalized = normalizeTextValues(value, layouts).map((entry) => entry.trim().toUpperCase());
+  if (normalized.every((entry) => entry.length === 0)) {
+    return undefined;
+  }
+
+  return normalized.length === 1 ? normalized[0] : normalized;
+}
+
+function isDefaultText(pieceKey: PieceKey, value: PieceText | undefined) {
+  const layouts = getTextLayouts(pieceKey);
+  if (layouts.length === 0) {
+    return true;
+  }
+
+  const expected = normalizeTextValues(getInitialTextForPiece(pieceKey), layouts);
+  const actual = normalizeTextValues(value, layouts);
+  return actual.every((entry, index) => entry === expected[index]);
+}
+
+function createPlacedPiece(pieceKey: PieceKey, x: number, y: number): PlacedPiece {
+  const piece = catalogData.pieces[pieceKey];
+  return {
+    id: crypto.randomUUID(),
+    pieceKey,
+    x,
+    y,
+    state: getDefaultState(piece),
+    text: getInitialTextForPiece(pieceKey),
+  };
+}
+
+function clampBoardValue(value: number, fallback: number) {
+  if (Number.isNaN(value)) {
+    return fallback;
+  }
+
+  return Math.max(4, Math.min(60, value));
+}
+
+function trimPiecesToBoard(pieces: PlacedPiece[], columns: number, rows: number) {
+  return pieces.filter((placedPiece) => {
+    const definition = catalogData.pieces[placedPiece.pieceKey];
+    return placedPiece.x + definition.bounds.width <= columns && placedPiece.y + definition.bounds.height <= rows;
+  });
+}
+
+function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[]) {
+  const instances = pieces
+    .map((placedPiece) => {
+      const definition = catalogData.pieces[placedPiece.pieceKey];
+      const serializedText = sanitizeTextValue(placedPiece.pieceKey, placedPiece.text);
+      const instance: Record<string, unknown> = {
+        id: placedPiece.id,
+        pieceKey: placedPiece.pieceKey,
+        x: placedPiece.x,
+        y: placedPiece.y,
+      };
+
+      if (placedPiece.state !== getDefaultState(definition)) {
+        instance.state = placedPiece.state;
+      }
+
+      if (serializedText !== undefined && !isDefaultText(placedPiece.pieceKey, serializedText)) {
+        instance.text = serializedText;
+      }
+
+      return instance;
+    })
+    .sort((a, b) => {
+      const ay = Number(a.y);
+      const by = Number(b.y);
+      if (ay !== by) return ay - by;
+      return Number(a.x) - Number(b.x);
+    });
+
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      board: {
+        columns,
+        rows,
+        tileAsset: "board.base",
+      },
+      instances,
+    },
+    null,
+    2,
   );
 }
 
 export default function BoardDemo() {
-  const [leadOccupancy, setLeadOccupancy] = useState<(typeof occupancyCycle)[number]>("clear");
-  const [lowerOccupancy, setLowerOccupancy] = useState<(typeof occupancyCycle)[number]>("clear");
-  const [routeRequested, setRouteRequested] = useState(true);
-  const [lowerRouteBuilt, setLowerRouteBuilt] = useState(true);
-  const [selectorState, setSelectorState] = useState<(typeof selectorCycle)[number]>("center");
-  const [switchState, setSwitchState] = useState("normal");
+  const [columns, setColumns] = useState(INITIAL_COLUMNS);
+  const [rows, setRows] = useState(INITIAL_ROWS);
+  const [pieces, setPieces] = useState<PlacedPiece[]>([]);
+  const [selection, setSelection] = useState<GridCell[]>([]);
+  const [pieceSearch, setPieceSearch] = useState("");
+  const [copied, setCopied] = useState(false);
 
-  const sceneSignalState = useMemo(() => {
-    if (!routeRequested) return "stop";
-    if (leadOccupancy === "occupied") return "stop";
-    if (switchState === "moving") return "stop";
-    return "clear";
-  }, [leadOccupancy, routeRequested, switchState]);
+  const compatiblePieces = useMemo(() => getCompatiblePieces(selection), [selection]);
+  const filteredCompatiblePieces = useMemo(() => {
+    const query = pieceSearch.trim().toLowerCase();
 
-  const leadTrackVisual = leadOccupancy === "occupied" ? "occupied" : routeRequested ? "reserved" : "clear";
-  const selectedBranchVisual =
-    leadOccupancy === "occupied" ? "occupied" : routeRequested ? "reserved" : "clear";
-  const unselectedBranchVisual = "clear";
-  const lowerTrackVisual =
-    lowerOccupancy === "occupied" ? "occupied" : lowerRouteBuilt ? "reserved" : "clear";
-  const switchOverlayState =
-    switchState === "moving"
-      ? switchState
-      : switchState === "stem"
-        ? leadOccupancy === "occupied"
-          ? "stem.occupied"
-          : routeRequested
-            ? "stem.reserved"
-            : "stem.clear"
-      : switchState === "reverse"
-        ? leadOccupancy === "occupied"
-          ? "reverse.occupied"
-          : routeRequested
-            ? "reverse.reserved"
-            : "reverse.clear"
-        : leadOccupancy === "occupied"
-          ? "normal.occupied"
-          : routeRequested
-            ? "normal.reserved"
-            : "normal.clear";
+    if (!query) {
+      return compatiblePieces;
+    }
 
-  const sceneElements = useMemo<SceneElement[]>(() => {
-    return [
-      {
-        id: "entry-signal",
-        pieceKey: "signal.entry",
-        x: 0,
-        y: 3,
-        state: sceneSignalState,
-        label: "Entry signal",
-      },
-      ...Array.from({ length: 4 }, (_, index) => ({
-        id: `lead-track-${index}`,
-        pieceKey: "track.main" as PieceKey,
-        x: index + 1,
-        y: 3,
-        state: leadTrackVisual,
-        label: "Lead track",
-        onClick: () => setLeadOccupancy(nextValue(occupancyCycle, leadOccupancy)),
-      })),
-      {
-        id: "switch",
-        pieceKey: "switch.extended",
-        x: 5,
-        y: 1,
-        state: switchState,
-        overlayState: switchOverlayState,
-        label: "Turnout",
-        onClick: () => {
-          setSwitchState((current) =>
-            current === "normal" ? "reverse" : current === "reverse" ? "stem" : "normal",
-          );
-          setSelectorState((current) => (current === "right" ? "left" : "right"));
-        },
-      },
-      ...Array.from({ length: 4 }, (_, index) => ({
-        id: `upper-branch-${index}`,
-        pieceKey: "track.main" as PieceKey,
-        x: index + 7,
-        y: 1,
-        state: switchState === "reverse" ? selectedBranchVisual : unselectedBranchVisual,
-        label: "Upper branch",
-      })),
-      ...Array.from({ length: 4 }, (_, index) => ({
-        id: `lower-branch-${index}`,
-        pieceKey: "track.main" as PieceKey,
-        x: index + 7,
-        y: 3,
-        state: switchState === "normal" ? selectedBranchVisual : unselectedBranchVisual,
-        label: "Lower branch",
-      })),
-      ...Array.from({ length: 5 }, (_, index) => ({
-        id: `yard-track-${index}`,
-        pieceKey: "track.main" as PieceKey,
-        x: index + 6,
-        y: 5,
-        state: lowerTrackVisual,
-        label: "Lower route",
-        onClick: index === 0 ? () => setLowerOccupancy(nextValue(occupancyCycle, lowerOccupancy)) : undefined,
-      })),
-      {
-        id: "selector",
-        pieceKey: "button.switchSelector",
-        x: 12,
-        y: 1,
-        state: selectorState,
-        label: "Switch selector",
-        onClick: () => {
-          const next = nextValue(selectorCycle, selectorState);
-          setSelectorState(next);
-          if (next === "left") setSwitchState("normal");
-          if (next === "right") setSwitchState("reverse");
-          if (next === "center") setSwitchState("stem");
-        },
-      },
-      {
-        id: "route-button",
-        pieceKey: "button.sign",
-        x: 12,
-        y: 3,
-        state: routeRequested ? "armed" : "idle",
-        label: "Route request",
-        onClick: () => setRouteRequested((current) => !current),
-      },
-      {
-        id: "departure-button",
-        pieceKey: "button.departure",
-        x: 13,
-        y: 3,
-        state: sceneSignalState === "clear" ? "pressed" : "idle",
-        label: "Departure command",
-      },
-      {
-        id: "lower-route-button",
-        pieceKey: "button.shunt",
-        x: 12,
-        y: 5,
-        state: lowerRouteBuilt ? "armed" : "idle",
-        label: "Lower route request",
-        onClick: () => setLowerRouteBuilt((current) => !current),
-      },
-    ];
-  }, [
-    leadOccupancy,
-    leadTrackVisual,
-    lowerOccupancy,
-    lowerRouteBuilt,
-    lowerTrackVisual,
-    routeRequested,
-    sceneSignalState,
-    selectedBranchVisual,
-    selectorState,
-    switchOverlayState,
-    switchState,
-    unselectedBranchVisual,
-  ]);
+    return compatiblePieces.filter(([pieceKey, piece]) => {
+      return (
+        pieceKey.toLowerCase().includes(query) ||
+        piece.category.toLowerCase().includes(query) ||
+        piece.layer.toLowerCase().includes(query)
+      );
+    });
+  }, [compatiblePieces, pieceSearch]);
+  const exactSelectedPiece = useMemo(
+    () => pieces.find((placedPiece) => selectionMatchesPiece(selection, placedPiece)) ?? null,
+    [pieces, selection],
+  );
+  const selectionOrigin = selection.length > 0 ? getSelectionOrigin(selection) : null;
+  const exportJson = useMemo(() => buildExportJson(columns, rows, pieces), [columns, rows, pieces]);
+
+  function updateBoardSize(nextColumns: number, nextRows: number) {
+    const clampedColumns = clampBoardValue(nextColumns, columns);
+    const clampedRows = clampBoardValue(nextRows, rows);
+    setColumns(clampedColumns);
+    setRows(clampedRows);
+    setPieces((current) => trimPiecesToBoard(current, clampedColumns, clampedRows));
+    setSelection((current) => current.filter((cell) => cell.x < clampedColumns && cell.y < clampedRows));
+  }
+
+  function handleTileClick(cell: GridCell, event: MouseEvent<HTMLButtonElement>) {
+    const isMultiSelect = event.ctrlKey || event.metaKey;
+    setSelection((current) => {
+      if (isMultiSelect) {
+        return toggleCell(current, cell);
+      }
+
+      return [cell];
+    });
+  }
+
+  function placePiece(pieceKey: PieceKey) {
+    if (!selectionOrigin) {
+      return;
+    }
+
+    const definition = catalogData.pieces[pieceKey];
+    if (selectionOrigin.x + definition.bounds.width > columns || selectionOrigin.y + definition.bounds.height > rows) {
+      return;
+    }
+
+    const nextPiece = createPlacedPiece(pieceKey, selectionOrigin.x, selectionOrigin.y);
+    setPieces((current) => {
+      const cleaned = current.filter((placedPiece) => !intersectsSelection(placedPiece, selection));
+      return [...cleaned, nextPiece];
+    });
+  }
+
+  function eraseSelection() {
+    if (selection.length === 0) {
+      return;
+    }
+
+    setPieces((current) => current.filter((placedPiece) => !intersectsSelection(placedPiece, selection)));
+  }
+
+  function clearBoard() {
+    setPieces([]);
+    setSelection([]);
+  }
+
+  function removePiece(target: PlacedPiece) {
+    setPieces((current) => current.filter((placedPiece) => placedPiece.id !== target.id));
+    setSelection((current) => (selectionMatchesPiece(current, target) ? [] : current));
+  }
+
+  async function copyJson() {
+    await navigator.clipboard.writeText(exportJson);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  }
+
+  function updateSelectedPieceState(state: string) {
+    if (!exactSelectedPiece) {
+      return;
+    }
+
+    setPieces((current) =>
+      current.map((placedPiece) =>
+        placedPiece.id === exactSelectedPiece.id
+          ? {
+              ...placedPiece,
+              state,
+            }
+          : placedPiece,
+      ),
+    );
+  }
+
+  function updateSelectedPieceText(index: number, value: string) {
+    if (!exactSelectedPiece) {
+      return;
+    }
+
+    const layouts = getTextLayouts(exactSelectedPiece.pieceKey);
+    const normalized = normalizeTextValues(exactSelectedPiece.text, layouts);
+    const nextValues = [...normalized];
+    nextValues[index] = value.toUpperCase();
+    const nextText = nextValues.length === 1 ? nextValues[0] : nextValues;
+
+    setPieces((current) =>
+      current.map((placedPiece) =>
+        placedPiece.id === exactSelectedPiece.id
+          ? {
+              ...placedPiece,
+              text: nextText,
+            }
+          : placedPiece,
+      ),
+    );
+  }
+
+  const selectedPieceDefinition = exactSelectedPiece ? catalogData.pieces[exactSelectedPiece.pieceKey] : null;
+  const selectedPieceTextLayouts = exactSelectedPiece ? getTextLayouts(exactSelectedPiece.pieceKey) : [];
+  const selectedPieceTextValues = exactSelectedPiece
+    ? normalizeTextValues(exactSelectedPiece.text, selectedPieceTextLayouts)
+    : [];
 
   return (
-    <main
-      className={styles.board}
-      style={{ "--board-columns": HORIZONTAL_TILE_COUNT } as CSSProperties}
-    >
-      <div className={styles.shell}>
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>Slovak relay board demo</p>
-            <h1>State changes are a second rendering layer on top of the SVG artwork.</h1>
-            <p className={styles.heroText}>
-              The asset catalog defines footprint and allowed states. The renderer uses that metadata to place the base SVG,
-              then paints route highlights, occupancy, lamps, and selector position as live overlays.
-            </p>
-          </div>
+    <main className={styles.editorPage}>
+      <div className={styles.editorShell}>
+        <section className={styles.workspace}>
+          <article className={styles.boardPanel}>
+            <div className={styles.cornerToolbar}>
+              <label className={styles.compactField}>
+                <span>C</span>
+                <input
+                  type="number"
+                  min={4}
+                  max={60}
+                  value={columns}
+                  onChange={(event) => updateBoardSize(Number(event.target.value), rows)}
+                />
+              </label>
 
-          <div className={styles.controlStrip}>
-            <label className={styles.controlField}>
-              <span>Lead occupancy</span>
-              <select value={leadOccupancy} onChange={(event) => setLeadOccupancy(event.target.value as (typeof occupancyCycle)[number])}>
-                <option value="clear">Clear</option>
-                <option value="occupied">Occupied</option>
-              </select>
-            </label>
+              <label className={styles.compactField}>
+                <span>R</span>
+                <input
+                  type="number"
+                  min={4}
+                  max={60}
+                  value={rows}
+                  onChange={(event) => updateBoardSize(columns, Number(event.target.value))}
+                />
+              </label>
 
-            <label className={styles.controlField}>
-              <span>Lower occupancy</span>
-              <select value={lowerOccupancy} onChange={(event) => setLowerOccupancy(event.target.value as (typeof occupancyCycle)[number])}>
-                <option value="clear">Clear</option>
-                <option value="occupied">Occupied</option>
-              </select>
-            </label>
+              <button type="button" className={styles.iconButton} onClick={() => setSelection([])}>
+                Clear
+              </button>
 
-            <label className={styles.controlField}>
-              <span>Switch</span>
-              <select value={switchState} onChange={(event) => setSwitchState(event.target.value)}>
-                <option value="normal">1 to 3</option>
-                <option value="reverse">1 to 2</option>
-                <option value="stem">1 only</option>
-                <option value="moving">Moving</option>
-              </select>
-            </label>
+              <button type="button" className={styles.iconButton} onClick={eraseSelection} disabled={selection.length === 0}>
+                Erase
+              </button>
 
-            <button type="button" className={styles.routeButton} onClick={() => setRouteRequested((current) => !current)}>
-              {routeRequested ? "Cancel main route" : "Build main route"}
-            </button>
-          </div>
-        </section>
+              <button type="button" className={styles.iconButtonDanger} onClick={clearBoard} disabled={pieces.length === 0}>
+                Reset
+              </button>
+            </div>
 
-        <section className={styles.demoGrid}>
-          <article className={styles.scenePanel}>
             <header className={styles.panelHeader}>
               <div>
-                <h2>Live Interlocking Scene</h2>
-                <p>Click the route buttons, turnout, selector, lead track, or lower route.</p>
+                <h2>Board</h2>
+                <p>{selection.length === 0 ? "Click to select. Ctrl/Cmd for multi-select." : `${selection.length} tile(s) selected.`}</p>
               </div>
-              <div className={styles.sceneLegend}>
-                <span><i className={styles.legendDefault} /> idle board</span>
-                <span><i style={{ backgroundColor: "#f6f7f8" }} /> route built</span>
-                <span><i style={{ backgroundColor: "#f05454" }} /> occupied</span>
+              <div className={styles.statLine}>
+                <span>{pieces.length} placed</span>
+                <span>{compatiblePieces.length} matching piece(s)</span>
               </div>
             </header>
 
-            <div className={styles.sceneBoardWrap}>
-              <SceneBoard elements={sceneElements} columns={14} rows={7} tileSize={46} />
-            </div>
+            <div className={styles.boardScroller}>
+              <div
+                className={styles.editorBoard}
+                style={
+                  {
+                    width: columns * BOARD_TILE,
+                    height: rows * BOARD_TILE,
+                    "--board-columns": columns,
+                    "--board-rows": rows,
+                    "--board-tile": `${BOARD_TILE}px`,
+                  } as CSSProperties
+                }
+              >
+                <div className={styles.boardPieces}>
+                  {pieces.map((placedPiece) => {
+                    const piece = catalogData.pieces[placedPiece.pieceKey];
+                    const isSelected = exactSelectedPiece?.id === placedPiece.id;
 
-            <div className={styles.sceneNotes}>
-              <p>
-                Idle track is left untouched. A built route is shown in <strong>white</strong>. Occupancy overrides the route and turns
-                the segment <strong>red</strong>.
-              </p>
-              <p>
-                The turnout does not become green. It only shows the selected path in white or red depending on whether the routed
-                segment is occupied.
-              </p>
-            </div>
-          </article>
+                    return (
+                      <div
+                        key={placedPiece.id}
+                        className={`${styles.boardPiece} ${isSelected ? styles.boardPieceSelected : ""}`}
+                        style={{
+                          left: placedPiece.x * BOARD_TILE,
+                          top: placedPiece.y * BOARD_TILE,
+                          width: piece.bounds.width * BOARD_TILE,
+                          height: piece.bounds.height * BOARD_TILE,
+                        }}
+                        onClick={() => setSelection(getPieceOccupiedCells(placedPiece))}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          removePiece(placedPiece);
+                        }}
+                        title="Right-click to remove"
+                      >
+                        <PiecePreview
+                          pieceKey={placedPiece.pieceKey}
+                          piece={piece}
+                          state={placedPiece.state}
+                          text={placedPiece.text}
+                          tileSize={BOARD_TILE}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
 
-          <article className={styles.archPanel}>
-            <header className={styles.panelHeader}>
-              <div>
-                <h2>How State Switching Works</h2>
-                <p>What the app needs in order to recolor track, lamps, and selected paths.</p>
+                <div className={styles.tileGrid}>
+                  {Array.from({ length: rows * columns }, (_, index) => {
+                    const x = index % columns;
+                    const y = Math.floor(index / columns);
+                    const selected = selection.some((cell) => cell.x === x && cell.y === y);
+
+                    return (
+                      <button
+                        key={`${x}-${y}`}
+                        type="button"
+                        className={`${styles.tileButton} ${selected ? styles.tileButtonSelected : ""}`}
+                        onClick={(event) => handleTileClick({ x, y }, event)}
+                        aria-label={`Tile ${x}, ${y}`}
+                      >
+                        <span className={styles.tileCoord}>
+                          {x},{y}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </header>
-
-            <div className={styles.archList}>
-              <p>
-                `piece-catalog.json` defines the allowed states, footprint, and asset path for each element.
-              </p>
-              <p>
-                A station layout file places instances on the board and stores only position plus piece id.
-              </p>
-              <p>
-                Runtime state should be split, for example `track-4.occupied = true`, `track-4.routeBuilt = true`,
-                `switch-12.position = reverse`.
-              </p>
-              <p>
-                The renderer combines base SVG + state overlay. Route highlight and occupancy are separate concerns, and occupancy
-                has higher priority.
-              </p>
-              <p>
-                For production accuracy, the next step is to add per-piece overlay geometry into the catalog instead of
-                hardcoding the demo paths in React.
-              </p>
             </div>
           </article>
-        </section>
 
-        <section className={styles.catalogSection}>
-          <header className={styles.panelHeader}>
-            <div>
-              <h2>Catalog Playground</h2>
-              <p>Every current asset from `public/assets` rendered with its state model.</p>
-            </div>
-          </header>
+          <aside className={styles.sidebar}>
+            <section className={styles.sidebarCard}>
+              <header className={styles.panelHeader}>
+                <div>
+                  <h2>Matching pieces</h2>
+                  <p>Footprint matches for the current selection.</p>
+                </div>
+              </header>
 
-          <div className={styles.catalogGrid}>
-            {pieceEntries.map(([pieceKey, piece]) => (
-              <CatalogCard key={pieceKey} pieceKey={pieceKey} piece={piece} />
-            ))}
-          </div>
+              <label className={styles.searchField}>
+                <span>Search</span>
+                <input
+                  type="text"
+                  value={pieceSearch}
+                  onChange={(event) => setPieceSearch(event.target.value)}
+                  placeholder="switch, signal, noocp..."
+                />
+              </label>
+
+              {selection.length === 0 ? (
+                <p className={styles.emptyState}>No selection yet.</p>
+              ) : compatiblePieces.length === 0 ? (
+                <p className={styles.emptyState}>No catalog piece matches this tile shape.</p>
+              ) : filteredCompatiblePieces.length === 0 ? (
+                <p className={styles.emptyState}>No matching piece fits both the shape and your search.</p>
+              ) : (
+                <div className={styles.matchGrid}>
+                  {filteredCompatiblePieces.map(([pieceKey, piece]) => (
+                    <button key={pieceKey} type="button" className={styles.matchCard} onClick={() => placePiece(pieceKey)}>
+                      <PiecePreview pieceKey={pieceKey} piece={piece} state={getDefaultState(piece)} text={getInitialTextForPiece(pieceKey)} tileSize={PREVIEW_TILE} />
+                      <div className={styles.matchMeta}>
+                        <strong>{pieceKey}</strong>
+                        <span>
+                          {piece.category} · {piece.bounds.width}x{piece.bounds.height}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className={styles.sidebarCard}>
+              <header className={styles.panelHeader}>
+                <div>
+                  <h2>Selected piece</h2>
+                  <p>Edit state and label text after placing a component.</p>
+                </div>
+              </header>
+
+              {!exactSelectedPiece || !selectedPieceDefinition ? (
+                <p className={styles.emptyState}>Select the full footprint of one placed piece to edit it.</p>
+              ) : (
+                <div className={styles.inspector}>
+                  <div className={styles.inspectorPreview}>
+                    <PiecePreview
+                      pieceKey={exactSelectedPiece.pieceKey}
+                      piece={selectedPieceDefinition}
+                      state={exactSelectedPiece.state}
+                      text={exactSelectedPiece.text}
+                      tileSize={PREVIEW_TILE}
+                    />
+                  </div>
+
+                  <p className={styles.metaLine}>
+                    Anchor: [{exactSelectedPiece.x}, {exactSelectedPiece.y}]
+                  </p>
+
+                  {getStateOptions(selectedPieceDefinition).length > 0 ? (
+                    <label className={styles.field}>
+                      <span>State</span>
+                      <select value={exactSelectedPiece.state} onChange={(event) => updateSelectedPieceState(event.target.value)}>
+                        {getStateOptions(selectedPieceDefinition).map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+
+                  {selectedPieceTextLayouts.map((layout, index) => (
+                    <label key={`${layout.label}-${index}`} className={styles.field}>
+                      <span>{layout.label}</span>
+                      <input
+                        type="text"
+                        maxLength={layout.maxLength ?? 24}
+                        value={selectedPieceTextValues[index] ?? ""}
+                        onChange={(event) => updateSelectedPieceText(index, event.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className={styles.sidebarCard}>
+              <header className={styles.panelHeader}>
+                <div>
+                  <h2>Export JSON</h2>
+                  <p>Copy the authored layout to the clipboard.</p>
+                </div>
+                <button type="button" className={styles.secondaryButton} onClick={copyJson}>
+                  {copied ? "Copied" : "Export JSON"}
+                </button>
+              </header>
+            </section>
+          </aside>
         </section>
       </div>
     </main>

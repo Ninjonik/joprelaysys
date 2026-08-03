@@ -80,7 +80,9 @@ function CatalogCard({
             onChange={(event) =>
               setTextValues((current) => {
                 const next = [...current];
-                next[index] = event.target.value.toUpperCase();
+                next[index] = pieceKey === "button.sign.sealedCounter" && index === 0
+                  ? event.target.value
+                  : event.target.value.toUpperCase();
                 return next;
               })
             }

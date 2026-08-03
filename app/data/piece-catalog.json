@@ -701,15 +701,19 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "danger",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "danger",
+            "label": "Danger"
           },
           {
             "id": "clear",
             "label": "Clear"
+          },
+          {
+            "id": "shunt",
+            "label": "Shunt"
           }
         ]
       }
@@ -727,15 +731,19 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "danger",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "danger",
+            "label": "Danger"
           },
           {
             "id": "clear",
             "label": "Clear"
+          },
+          {
+            "id": "shunt",
+            "label": "Shunt"
           }
         ]
       }
@@ -753,15 +761,11 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "warning",
+        "defaultState": "off",
         "states": [
           {
-            "id": "warning",
-            "label": "Warning"
-          },
-          {
-            "id": "expectStop",
-            "label": "Expect Stop"
+            "id": "off",
+            "label": "Off"
           },
           {
             "id": "clear",
@@ -783,15 +787,11 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "warning",
+        "defaultState": "off",
         "states": [
           {
-            "id": "warning",
-            "label": "Warning"
-          },
-          {
-            "id": "expectStop",
-            "label": "Expect Stop"
+            "id": "off",
+            "label": "Off"
           },
           {
             "id": "clear",
@@ -1046,19 +1046,23 @@
       "layer": "control",
       "stateModel": {
         "kind": "threePositionSelector",
-        "defaultState": "center",
+        "defaultState": "off",
         "states": [
           {
-            "id": "left",
-            "label": "Switched Left"
+            "id": "off",
+            "label": "Off"
           },
           {
-            "id": "center",
-            "label": "Neutral"
+            "id": "left",
+            "label": "Set Left"
+          },
+          {
+            "id": "setting",
+            "label": "Setting"
           },
           {
             "id": "right",
-            "label": "Switched Right"
+            "label": "Set Right"
           }
         ]
       }

@@ -26,6 +26,8 @@ type TextLayout = {
   rotate?: number;
   fontSize?: number;
   letterSpacing?: number;
+  fill?: string;
+  fontFamily?: string;
   label: string;
   maxLength?: number;
 };
@@ -201,21 +203,21 @@ const SIGNAL_LAMP_LAYOUTS: Partial<Record<PieceKey, Record<string, OverlayLamp[]
     caution: [{ x: 67.33, y: 60, r: 4.78, color: "#f0b948" }],
   },
   "signal.departure2": {
-    stop: [{ x: 37.67, y: 15, r: 4.78, color: "#d84242" }],
+    danger: [],
     clear: [{ x: 22.67, y: 15, r: 4.78, color: "#63d29b" }],
+    shunt: [{ x: 37.67, y: 15, r: 4.78, color: "#f7f8fb" }],
   },
   "signal.departure2.noocp": {
-    stop: [{ x: 37.67, y: 15, r: 4.78, color: "#d84242" }],
+    danger: [],
     clear: [{ x: 22.67, y: 15, r: 4.78, color: "#63d29b" }],
+    shunt: [{ x: 37.67, y: 15, r: 4.78, color: "#f7f8fb" }],
   },
   "signal.premain": {
-    warning: [{ x: 37.67, y: 15, r: 4.78, color: "#f0b948" }],
-    expectStop: [{ x: 37.67, y: 15, r: 4.78, color: "#f0b948" }],
+    off: [],
     clear: [{ x: 37.67, y: 15, r: 4.78, color: "#63d29b" }],
   },
   "signal.premain.noocp": {
-    warning: [{ x: 37.67, y: 15, r: 4.78, color: "#f0b948" }],
-    expectStop: [{ x: 37.67, y: 15, r: 4.78, color: "#f0b948" }],
+    off: [],
     clear: [{ x: 37.67, y: 15, r: 4.78, color: "#63d29b" }],
   },
   "signal.shunt": {
@@ -267,26 +269,25 @@ const CONTROL_LAMP_LAYOUTS: Partial<Record<PieceKey, Record<string, OverlayLamp[
 };
 
 const SELECTOR_LAMP_LAYOUTS: Record<string, OverlayLamp[]> = {
-  left: [{ x: 16.04, y: 39.93, r: 6.05, color: "#4ea7ff" }],
-  center: [{ x: 37.5, y: 21.63, r: 6.05, color: "#c5ccd0" }],
-  right: [{ x: 58.96, y: 39.93, r: 6.05, color: "#63d29b" }],
+  off: [],
+  left: [{ x: 16.04, y: 39.93, r: 6.05, color: "#63d29b" }],
+  setting: [{ x: 37.5, y: 21.63, r: 6.05, color: "#d84242" }],
+  right: [{ x: 58.96, y: 39.93, r: 6.05, color: "#f0b948" }],
 };
 
 const SELECTOR_POINTER_ANGLES: Record<string, number> = {
   left: -42,
-  center: 0,
+  setting: 0,
+  off: 0,
   right: 42,
 };
 
-const SELECTOR_POINTER_PATH =
-  "M 35.1 126.4 L 35.1 95.2 C 35.1 91.8 39.2 90.2 41.4 92.8 L 43.6 95.5 C 45 97.1 45.2 99.4 44.1 101.2 L 39.9 107.7 L 39.9 126.4 Z";
-
-const SELECTOR_POINTER_TIP: OverlayLamp = {
-  x: 39.9,
-  y: 98.1,
-  r: 4.2,
-  color: "#2d2f31",
-};
+const SELECTOR_HANDLE_POLYGON = "35.07 85.28 21.13 119.39 53.87 119.39 40.01 85.29 35.07 85.28";
+const SELECTOR_HANDLE_PATH =
+  "M55.29 126.17c.3 10.02-7.13 18.73-16.6 19.38-10.38.71-18.99-7.97-18.99-18.76 0-2.64.51-5.14 1.43-7.41h0c6.46 0 11.7-5.53 11.7-12.35v-19.5c0-1.24.95-2.25 2.13-2.25h5.07c1.18 0 2.13 1.01 2.13 2.25v19.5c0 6.82 5.24 12.35 11.7 12.35h0c.85 2.09 1.35 4.38 1.42 6.79Z";
+const SELECTOR_PANEL_FILL = "#b4bbbd";
+const SELECTOR_RING_FILL = "#6e6e6e";
+const SELECTOR_CORE_FILL = "#d9d9d9";
 
 const LINEBLOCK_LAMP_LAYOUTS: Record<string, OverlayLamp[]> = {
   clear: [{ x: 112.5, y: 51.35, r: 6.73, color: "#f7f8fb" }],
@@ -336,7 +337,21 @@ const TEXT_LAYOUTS: Partial<Record<PieceKey, TextLayout[]>> = {
   "signal.shunt.noocp": [{ x: 0, y: 52.5, width: 28.27, height: 15, label: "Label", fontSize: 10, letterSpacing: 0.3, maxLength: 4 }],
   "button.sign": [{ x: 4.99, y: 10.02, width: 65.01, height: 24.3, label: "Text", fontSize: 16, letterSpacing: 0.6, maxLength: 8 }],
   "button.sign.light": [{ x: 4.99, y: 10.02, width: 65.01, height: 24.3, label: "Text", fontSize: 16, letterSpacing: 0.6, maxLength: 8 }],
-  "button.sign.sealedCounter": [{ x: 4.99, y: 0, width: 65.01, height: 24.3, label: "Counter", fontSize: 16, letterSpacing: 0.6, maxLength: 6 }],
+  "button.sign.sealedCounter": [
+    { x: 4.99, y: 0, width: 65.01, height: 24.3, label: "Note", fontSize: 15, letterSpacing: 0.35, maxLength: 12 },
+    {
+      x: 10.26,
+      y: 62.95,
+      width: 56.2,
+      height: 10.35,
+      label: "Counter",
+      fontSize: 8.8,
+      letterSpacing: 1.05,
+      fill: "#e8edf2",
+      fontFamily: "'Roboto Mono', Consolas, 'Courier New', monospace",
+      maxLength: 6,
+    },
+  ],
   "button.switchSelector": [{ x: 4.77, y: 56.15, width: 65.47, height: 18.24, label: "Text", fontSize: 12, letterSpacing: 0.5, maxLength: 8 }],
   "button.lineblock": [
     { x: 4.99, y: 10.02, width: 65.01, height: 24.3, label: "A", fontSize: 12, letterSpacing: 0.45, maxLength: 8 },
@@ -434,6 +449,7 @@ function getStateColor(kind: string, state: string) {
   if (kind === "signalAspect") {
     if (state === "green") return "#63d29b";
     if (state === "white" || state === "proceed") return "#f7f8fb";
+    if (state === "off" || state === "danger") return "#d84242";
     if (state === "clear") return "#63d29b";
     if (state === "warning" || state === "expectStop") return "#f0b948";
     if (state === "caution") return "#f0b948";
@@ -441,9 +457,10 @@ function getStateColor(kind: string, state: string) {
   }
 
   if (kind === "threePositionSelector") {
-    if (state === "left") return "#4ea7ff";
-    if (state === "right") return "#63d29b";
-    return "#c5ccd0";
+    if (state === "left") return "#63d29b";
+    if (state === "setting") return "#d84242";
+    if (state === "right") return "#f0b948";
+    return "#636a6e";
   }
 
   if (kind === "indicator") {
@@ -542,12 +559,12 @@ export function getDefaultTextValues(pieceKey: PieceKey, layouts: TextLayout[]) 
   }
 
   if (pieceKey === "button.sign.sealedCounter") {
-    return ["000000"];
+    return ["", "000000"];
   }
 
-  return layouts.map((_, index) => {
-    if (pieceKey.startsWith("switch.single")) return "A6030";
-    if (pieceKey.startsWith("switch.extended")) return index === 0 ? "A6030" : "A6031";
+  return layouts.map(() => {
+    if (pieceKey.startsWith("switch.single")) return "";
+    if (pieceKey.startsWith("switch.extended")) return "";
     return "ABCD";
   });
 }
@@ -578,6 +595,10 @@ function rotatePoint180(x: number, y: number, width: number, height: number) {
   };
 }
 
+function shouldPreserveTextCase(pieceKey: PieceKey, index: number) {
+  return pieceKey === "button.sign.sealedCounter" && index === 0;
+}
+
 function renderTextOverlays(pieceKey: PieceKey, text: PieceText | undefined, rotation: PieceRotation, width: number, height: number) {
   const layouts = getTextLayouts(pieceKey);
 
@@ -606,9 +627,9 @@ function renderTextOverlays(pieceKey: PieceKey, text: PieceText | undefined, rot
         textAnchor="middle"
         dominantBaseline="middle"
         transform={layout.rotate ? `rotate(${layout.rotate} ${point.x} ${point.y})` : undefined}
-        fill="#27282b"
+        fill={layout.fill ?? "#27282b"}
         fontSize={getTextFontSize(layout, value)}
-        fontFamily="Consolas, 'Courier New', monospace"
+        fontFamily={layout.fontFamily ?? "Consolas, 'Courier New', monospace"}
         letterSpacing={layout.letterSpacing ?? 0.5}
       >
         {value}
@@ -712,12 +733,22 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
           cy={lamp.y}
           r={lamp.r}
           fill={lamp.color}
+          className={state === "white" ? styles.flashLamp : undefined}
         />
       )),
     );
   }
 
   if (kind === "threePositionSelector") {
+    nodes.push(
+      <g key="selector-reset">
+        <polygon points={SELECTOR_HANDLE_POLYGON} fill={SELECTOR_PANEL_FILL} />
+        <path d={SELECTOR_HANDLE_PATH} fill={SELECTOR_PANEL_FILL} />
+        <circle cx={37.5} cy={127.78} r={22.26} fill={SELECTOR_RING_FILL} />
+        <circle cx={37.5} cy={127.78} r={17.6} fill={SELECTOR_CORE_FILL} />
+      </g>,
+    );
+
     nodes.push(
       ...getSelectorLampLayout(state).map((lamp) => (
         <circle
@@ -733,10 +764,8 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
 
     nodes.push(
       <g key="selector-pointer" transform={`rotate(${SELECTOR_POINTER_ANGLES[state] ?? 0} 37.5 127.78)`}>
-        <path d={SELECTOR_POINTER_PATH} fill="#2d2f31" />
-        <circle cx={SELECTOR_POINTER_TIP.x} cy={SELECTOR_POINTER_TIP.y} r={SELECTOR_POINTER_TIP.r} fill={SELECTOR_POINTER_TIP.color} />
-        <circle cx={37.5} cy={127.78} r={9.2} fill="#6f7579" opacity={0.9} />
-        <circle cx={37.5} cy={127.78} r={5.4} fill="#aeb4b8" opacity={0.95} />
+        <polygon points={SELECTOR_HANDLE_POLYGON} fill="#a1a1a1" />
+        <path d={SELECTOR_HANDLE_PATH} fill="#b3b3b3" />
       </g>,
     );
   }
@@ -931,7 +960,9 @@ function sanitizeTextValue(pieceKey: PieceKey, value: PieceText | undefined) {
     return undefined;
   }
 
-  const normalized = normalizeTextValues(value, layouts).map((entry) => entry.trim().toUpperCase());
+  const normalized = normalizeTextValues(value, layouts).map((entry, index) =>
+    shouldPreserveTextCase(pieceKey, index) ? entry.trim() : entry.trim().toUpperCase(),
+  );
   if (normalized.every((entry) => entry.length === 0)) {
     return undefined;
   }
@@ -1143,7 +1174,7 @@ export default function BoardDemo() {
     const layouts = getTextLayouts(exactSelectedPiece.pieceKey);
     const normalized = normalizeTextValues(exactSelectedPiece.text, layouts);
     const nextValues = [...normalized];
-    nextValues[index] = value.toUpperCase();
+    nextValues[index] = shouldPreserveTextCase(exactSelectedPiece.pieceKey, index) ? value : value.toUpperCase();
     const nextText = nextValues.length === 1 ? nextValues[0] : nextValues;
 
     setPieces((current) =>

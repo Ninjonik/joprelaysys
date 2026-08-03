@@ -620,6 +620,74 @@
         ]
       }
     },
+    "switch.crossover": {
+      "asset": "/assets/switches/SwitchCrossover_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchCrossover",
+        "defaultState": "top:normal.clear;bottom:normal.clear"
+      }
+    },
+    "switch.crossover.noocp": {
+      "asset": "/assets/switches/SwitchCrossoverNOOCP_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchCrossover",
+        "defaultState": "top:normal.clear;bottom:normal.clear"
+      }
+    },
+    "switch.crossover.mirror": {
+      "asset": "/assets/switches/SwitchCrossoverMIRROR_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchCrossover",
+        "defaultState": "top:normal.clear;bottom:normal.clear"
+      }
+    },
+    "switch.crossover.noocp.mirror": {
+      "asset": "/assets/switches/SwitchCrossoverNOOCPMIRROR_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchCrossover",
+        "defaultState": "top:normal.clear;bottom:normal.clear"
+      }
+    },
     "signal.entry": {
       "asset": "/assets/signals/Entry_1Square.svg",
       "category": "signal",

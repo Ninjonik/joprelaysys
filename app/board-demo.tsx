@@ -47,6 +47,7 @@ type SwitchOverlayShape = OverlayRect & {
 
 type SwitchRoute = "normal" | "reverse" | "stem" | "upper";
 type SwitchAspect = "clear" | "reserved" | "occupied" | "moving";
+type CrossoverRoute = "normal" | "reverse";
 
 type GridCell = {
   x: number;
@@ -95,6 +96,29 @@ const SWITCH_GEOMETRY = {
     normal: ["M 25.88 46.77 L 62.5 90.4", "M 94.03 127.95 L 130.66 171.64"],
     reverse: ["M 5 112.5 H 62", "M 94.03 127.95 L 130.66 171.64"],
     stem: ["M 83 187.5 H 142"],
+  },
+} as const;
+
+const CROSSOVER_GEOMETRY = {
+  "switch.crossover": {
+    top: {
+      normal: ["M 8 37.5 H 67"],
+      reverse: ["M 56.35 53.2 L 39.3 73.45"],
+    },
+    bottom: {
+      normal: ["M 8 112.5 H 67"],
+      reverse: ["M 18.65 96.8 L 35.7 76.55"],
+    },
+  },
+  "switch.crossover.mirror": {
+    top: {
+      normal: ["M 8 37.5 H 67"],
+      reverse: ["M 18.65 53.2 L 35.7 73.45"],
+    },
+    bottom: {
+      normal: ["M 8 112.5 H 67"],
+      reverse: ["M 56.35 96.8 L 39.3 76.55"],
+    },
   },
 } as const;
 
@@ -380,16 +404,49 @@ const TEXT_LAYOUTS: Partial<Record<PieceKey, TextLayout[]>> = {
     { x: 109.77, y: 202.5, width: 40.23, height: 15, label: "Lower", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
     { x: 78.24, y: 75.27, width: 32.53, height: 35.63, rotate: 50, label: "Upper", fontSize: 7.5, letterSpacing: 0.1, maxLength: 6 },
   ],
+  "switch.crossover": [
+    { x: 34.77, y: 7.5, width: 40.23, height: 15, label: "Top", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+    { x: 0, y: 127.5, width: 40.23, height: 15, label: "Bottom", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+  ],
+  "switch.crossover.noocp": [
+    { x: 34.77, y: 7.5, width: 40.23, height: 15, label: "Top", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+    { x: 0, y: 127.5, width: 40.23, height: 15, label: "Bottom", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+  ],
+  "switch.crossover.mirror": [
+    { x: 0, y: 7.5, width: 40.23, height: 15, label: "Top", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+    { x: 34.77, y: 127.5, width: 40.23, height: 15, label: "Bottom", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+  ],
+  "switch.crossover.noocp.mirror": [
+    { x: 0, y: 7.5, width: 40.23, height: 15, label: "Top", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+    { x: 34.77, y: 127.5, width: 40.23, height: 15, label: "Bottom", fontSize: 8, letterSpacing: 0.15, maxLength: 6 },
+  ],
   "sign.fourLabel": [{ x: 4.99, y: 28.4, width: 290.01, height: 31.94, label: "Text", fontSize: 20, letterSpacing: 0.8, maxLength: 24 }],
 };
 
 function suppressStateEditing(pieceKey: PieceKey, piece: PieceDefinition) {
-  return pieceKey.includes(".noocp") && (piece.stateModel.kind === "trackOccupancy" || piece.stateModel.kind === "switchPosition");
+  return pieceKey.includes(".noocp")
+    && (piece.stateModel.kind === "trackOccupancy" || piece.stateModel.kind === "switchPosition" || piece.stateModel.kind === "switchCrossover");
 }
 
 export function getStateOptions(piece: PieceDefinition, pieceKey?: PieceKey) {
   if (pieceKey && suppressStateEditing(pieceKey, piece)) {
     return [];
+  }
+
+  if (piece.stateModel.kind === "switchCrossover") {
+    const routes: CrossoverRoute[] = ["normal", "reverse"];
+    const aspects: Exclude<SwitchAspect, "moving">[] = ["clear", "reserved", "occupied"];
+
+    return routes.flatMap((topRoute) =>
+      aspects.flatMap((topAspect) =>
+        routes.flatMap((bottomRoute) =>
+          aspects.map((bottomAspect) => ({
+            id: `top:${topRoute}.${topAspect};bottom:${bottomRoute}.${bottomAspect}`,
+            label: `Top ${topRoute} ${topAspect} | Bottom ${bottomRoute} ${bottomAspect}`,
+          })),
+        ),
+      ),
+    );
   }
 
   return "states" in piece.stateModel ? piece.stateModel.states : [];
@@ -435,6 +492,32 @@ function parseSwitchState(pieceKey: PieceKey, rawState: string) {
   return { route, aspect, pulse: false };
 }
 
+function parseCrossoverState(rawState: string) {
+  const normalized = rawState.includes("top:") && rawState.includes("bottom:")
+    ? rawState
+    : "top:normal.clear;bottom:normal.clear";
+  const sections = normalized.split(";");
+  const defaults = {
+    top: { route: "normal" as CrossoverRoute, aspect: "clear" as Exclude<SwitchAspect, "moving"> },
+    bottom: { route: "normal" as CrossoverRoute, aspect: "clear" as Exclude<SwitchAspect, "moving"> },
+  };
+
+  for (const section of sections) {
+    const [name, value = "normal.clear"] = section.split(":");
+    if (name !== "top" && name !== "bottom") {
+      continue;
+    }
+
+    const [routePart, aspectPart] = value.split(".");
+    defaults[name] = {
+      route: routePart === "reverse" ? "reverse" : "normal",
+      aspect: aspectPart === "reserved" || aspectPart === "occupied" ? aspectPart : "clear",
+    };
+  }
+
+  return defaults;
+}
+
 function getStateColor(kind: string, state: string) {
   if (kind === "trackOccupancy") {
     if (state === "occupied") return "#f05454";
@@ -444,6 +527,13 @@ function getStateColor(kind: string, state: string) {
 
   if (kind === "switchPosition") {
     return getSwitchColor(parseSwitchState("switch.single" as PieceKey, state).aspect);
+  }
+
+  if (kind === "switchCrossover") {
+    const parsed = parseCrossoverState(state);
+    if (parsed.top.aspect === "occupied" || parsed.bottom.aspect === "occupied") return "#f05454";
+    if (parsed.top.aspect === "reserved" || parsed.bottom.aspect === "reserved") return "#f6f7f8";
+    return "transparent";
   }
 
   if (kind === "signalAspect") {
@@ -524,6 +614,18 @@ function getSwitchOverlayShapes(pieceKey: PieceKey, state: string) {
   return SWITCH_OVERLAY_SHAPES[pieceKey]?.[parsed.route] ?? [];
 }
 
+function getCrossoverGeometry(pieceKey: PieceKey) {
+  if (!pieceKey.startsWith("switch.crossover")) {
+    return null;
+  }
+
+  const geometryKey = pieceKey.includes("noocp")
+    ? (pieceKey.replace(".noocp", "") as keyof typeof CROSSOVER_GEOMETRY)
+    : (pieceKey as keyof typeof CROSSOVER_GEOMETRY);
+
+  return CROSSOVER_GEOMETRY[geometryKey] ?? null;
+}
+
 function getSignalLampLayout(pieceKey: PieceKey, state: string) {
   return SIGNAL_LAMP_LAYOUTS[pieceKey]?.[state] ?? [];
 }
@@ -565,6 +667,7 @@ export function getDefaultTextValues(pieceKey: PieceKey, layouts: TextLayout[]) 
   return layouts.map(() => {
     if (pieceKey.startsWith("switch.single")) return "";
     if (pieceKey.startsWith("switch.extended")) return "";
+    if (pieceKey.startsWith("switch.crossover")) return "";
     return "ABCD";
   });
 }
@@ -721,6 +824,49 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
           )),
         );
       }
+    }
+  }
+
+  if (kind === "switchCrossover" && !suppressStates) {
+    const geometry = getCrossoverGeometry(pieceKey);
+    const parsed = parseCrossoverState(state);
+
+    if (geometry) {
+      const segments = [
+        {
+          paths: geometry.top[parsed.top.route],
+          aspect: parsed.top.aspect,
+          key: "top",
+        },
+        {
+          paths: geometry.bottom[parsed.bottom.route],
+          aspect: parsed.bottom.aspect,
+          key: "bottom",
+        },
+      ];
+
+      nodes.push(
+        ...segments.flatMap((segment) => {
+          if (segment.aspect === "clear") {
+            return [];
+          }
+
+          const pathColor = getSwitchColor(segment.aspect);
+
+          return segment.paths.map((path, index) => (
+            <path
+              key={`${segment.key}-${index}`}
+              d={path}
+              fill="none"
+              stroke={pathColor}
+              strokeWidth={8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.92}
+            />
+          ));
+        }),
+      );
     }
   }
 

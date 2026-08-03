@@ -633,15 +633,23 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "danger",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "white",
+            "label": "White"
           },
           {
-            "id": "clear",
-            "label": "Clear"
+            "id": "danger",
+            "label": "Danger"
+          },
+          {
+            "id": "green",
+            "label": "Green"
+          },
+          {
+            "id": "caution",
+            "label": "Caution"
           }
         ]
       }
@@ -659,15 +667,23 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "danger",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "white",
+            "label": "White"
           },
           {
-            "id": "clear",
-            "label": "Clear"
+            "id": "danger",
+            "label": "Danger"
+          },
+          {
+            "id": "green",
+            "label": "Green"
+          },
+          {
+            "id": "caution",
+            "label": "Caution"
           }
         ]
       }
@@ -797,15 +813,15 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "off",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "off",
+            "label": "Off"
           },
           {
             "id": "proceed",
-            "label": "Proceed"
+            "label": "Shunt"
           }
         ]
       }
@@ -823,15 +839,15 @@
       "layer": "control",
       "stateModel": {
         "kind": "signalAspect",
-        "defaultState": "stop",
+        "defaultState": "off",
         "states": [
           {
-            "id": "stop",
-            "label": "Stop"
+            "id": "off",
+            "label": "Off"
           },
           {
             "id": "proceed",
-            "label": "Proceed"
+            "label": "Shunt"
           }
         ]
       }
@@ -1065,38 +1081,42 @@
       "layer": "control",
       "stateModel": {
         "kind": "lineblockPanel",
-        "defaultState": "idle",
+        "defaultState": "clear",
         "states": [
           {
-            "id": "idle",
-            "label": "Idle"
+            "id": "clear",
+            "label": "Volnost trate"
           },
           {
-            "id": "left.requesting",
-            "label": "Left requesting"
+            "id": "lineBusy",
+            "label": "Volnost zhasnuta"
           },
           {
-            "id": "left.granted",
-            "label": "Left granted"
+            "id": "consentReceived",
+            "label": "Prijem souhlasu"
           },
           {
-            "id": "left.blocked",
-            "label": "Left blocked"
+            "id": "consentGranted",
+            "label": "Udeleni souhlasu"
           },
           {
-            "id": "right.requesting",
-            "label": "Right requesting"
+            "id": "requestClearance",
+            "label": "Vyzva k udeleni odhlasky"
           },
           {
-            "id": "right.granted",
-            "label": "Right granted"
+            "id": "consentReceived.requestClearance",
+            "label": "Prijem souhlasu + vyzva"
           },
           {
-            "id": "right.blocked",
-            "label": "Right blocked"
+            "id": "consentGranted.requestClearance",
+            "label": "Udeleni souhlasu + vyzva"
+          },
+          {
+            "id": "lineBusy.requestClearance",
+            "label": "Volnost zhasnuta + vyzva"
           }
         ],
-        "notes": "This is a first-pass operational model. If the lamps represent a stricter block instrument state machine, replace these states with the real railway sequence."
+        "notes": "Modeled from the SZ Z1 RPB indicator set: free-track white center lamp, consent-received green arrow lamp, consent-granted red arrow lamp, and request-for-clearance white lamp at the lower button area. The lower D/E captions are button labels, not independent light aspects."
       }
     },
     "button.shuntBufferSignal": {

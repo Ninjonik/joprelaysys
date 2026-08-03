@@ -11,6 +11,7 @@ import {
   PiecePreview,
   type PieceDefinition,
   type PieceKey,
+  type PieceRotation,
 } from "../board-demo";
 import styles from "./page.module.css";
 
@@ -23,9 +24,10 @@ function CatalogCard({
   pieceKey: PieceKey;
   piece: PieceDefinition;
 }) {
-  const stateOptions = getStateOptions(piece);
+  const stateOptions = getStateOptions(piece, pieceKey);
   const textLayouts = getTextLayouts(pieceKey);
   const [state, setState] = useState(getDefaultState(piece));
+  const [rotation, setRotation] = useState<PieceRotation>(0);
   const [textValues, setTextValues] = useState(() => getDefaultTextValues(pieceKey, textLayouts));
   const normalizedText = normalizeTextValues(textValues, textLayouts);
   const previewText = textLayouts.length === 0 ? undefined : textLayouts.length === 1 ? normalizedText[0] : normalizedText;
@@ -42,8 +44,16 @@ function CatalogCard({
       </header>
 
       <div className={styles.previewWrap}>
-        <PiecePreview pieceKey={pieceKey} piece={piece} state={state} text={previewText} tileSize={PREVIEW_TILE} />
+        <PiecePreview pieceKey={pieceKey} piece={piece} state={state} rotation={rotation} text={previewText} tileSize={PREVIEW_TILE} />
       </div>
+
+      <label className={styles.field}>
+        <span>Rotation</span>
+        <select value={rotation} onChange={(event) => setRotation(Number(event.target.value) as PieceRotation)}>
+          <option value={0}>0°</option>
+          <option value={180}>180°</option>
+        </select>
+      </label>
 
       {stateOptions.length > 0 ? (
         <label className={styles.field}>

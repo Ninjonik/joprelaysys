@@ -70,6 +70,39 @@ type PlacedPiece = {
   textSize?: PieceTextSize;
 };
 
+type LinkEndpointKind = "selector" | "switchPart";
+
+type LinkEndpoint = {
+  pieceId: string;
+  kind: LinkEndpointKind;
+  partIndex: number;
+};
+
+type PieceLink = {
+  a: LinkEndpoint;
+  b: LinkEndpoint;
+};
+
+type LinkableArea = {
+  endpoint: LinkEndpoint;
+  cells: GridCell[];
+  center: {
+    x: number;
+    y: number;
+  };
+};
+
+type LinkDragState = {
+  start: LinkEndpoint;
+  currentCell: GridCell;
+  currentPoint: {
+    x: number;
+    y: number;
+  };
+  hoveredEndpoint: LinkEndpoint | null;
+  moved: boolean;
+};
+
 const INITIAL_COLUMNS = 24;
 const INITIAL_ROWS = 14;
 const BOARD_TILE = 42;
@@ -723,6 +756,25 @@ function mirrorPointX(x: number, y: number, width: number) {
   };
 }
 
+function rotateCell180(x: number, y: number, width: number, height: number) {
+  return {
+    x: width - 1 - x,
+    y: height - 1 - y,
+  };
+}
+
+function mirrorCellX(x: number, y: number, width: number) {
+  return {
+    x: width - 1 - x,
+    y,
+  };
+}
+
+function transformLocalCell(cell: GridCell, width: number, height: number, rotation: PieceRotation, mirrored: PieceMirror) {
+  const rotated = rotation === 180 ? rotateCell180(cell.x, cell.y, width, height) : cell;
+  return mirrored ? mirrorCellX(rotated.x, rotated.y, width) : rotated;
+}
+
 function transformOverlayPoint(x: number, y: number, width: number, height: number, rotation: PieceRotation, mirrored: PieceMirror) {
   const rotated = rotation === 180 ? rotatePoint180(x, y, width, height) : { x, y };
   return mirrored ? mirrorPointX(rotated.x, rotated.y, width) : rotated;
@@ -1163,6 +1215,123 @@ function getPieceOccupiedCells(placedPiece: PlacedPiece) {
   }));
 }
 
+function isSelectorPiece(pieceKey: PieceKey) {
+  return pieceKey === "button.switchSelector";
+}
+
+function isSwitchPiece(pieceKey: PieceKey) {
+  return pieceKey.startsWith("switch.single") || pieceKey.startsWith("switch.extended") || pieceKey.startsWith("switch.crossover");
+}
+
+function getSwitchPartLocalCells(pieceKey: PieceKey) {
+  if (pieceKey.startsWith("switch.extended")) {
+    return pieceKey.includes(".mirror")
+      ? [
+          [{ x: 0, y: 1 }, { x: 0, y: 2 }],
+          [{ x: 1, y: 0 }, { x: 1, y: 1 }],
+        ]
+      : [
+          [{ x: 1, y: 0 }, { x: 1, y: 1 }],
+          [{ x: 0, y: 1 }, { x: 0, y: 2 }],
+        ];
+  }
+
+  if (pieceKey.startsWith("switch.crossover")) {
+    return [[{ x: 0, y: 0 }], [{ x: 0, y: 1 }]];
+  }
+
+  if (pieceKey.startsWith("switch.single")) {
+    return [[{ x: 0, y: 0 }, { x: 0, y: 1 }]];
+  }
+
+  return [];
+}
+
+function getLinkableAreasForPiece(placedPiece: PlacedPiece) {
+  const definition = catalogData.pieces[placedPiece.pieceKey];
+  const areas: LinkableArea[] = [];
+
+  if (isSelectorPiece(placedPiece.pieceKey)) {
+    const cells = definition.occupied.map(([x, y]) => ({ x: placedPiece.x + x, y: placedPiece.y + y }));
+    const center = {
+      x: cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length,
+      y: cells.reduce((sum, cell) => sum + cell.y + 0.5, 0) / cells.length,
+    };
+
+    areas.push({
+      endpoint: {
+        pieceId: placedPiece.id,
+        kind: "selector",
+        partIndex: 0,
+      },
+      cells,
+      center,
+    });
+  }
+
+  if (!isSwitchPiece(placedPiece.pieceKey)) {
+    return areas;
+  }
+
+  const localParts = getSwitchPartLocalCells(placedPiece.pieceKey);
+  for (const [partIndex, localCells] of localParts.entries()) {
+    const cells = localCells.map((cell) => {
+      const transformed = transformLocalCell(
+        cell,
+        definition.bounds.width,
+        definition.bounds.height,
+        placedPiece.rotation,
+        placedPiece.mirrored,
+      );
+
+      return {
+        x: placedPiece.x + transformed.x,
+        y: placedPiece.y + transformed.y,
+      };
+    });
+    const center = {
+      x: cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length,
+      y: cells.reduce((sum, cell) => sum + cell.y + 0.5, 0) / cells.length,
+    };
+
+    areas.push({
+      endpoint: {
+        pieceId: placedPiece.id,
+        kind: "switchPart",
+        partIndex,
+      },
+      cells,
+      center,
+    });
+  }
+
+  return areas;
+}
+
+function isSameLinkEndpoint(a: LinkEndpoint, b: LinkEndpoint) {
+  return a.pieceId === b.pieceId && a.kind === b.kind && a.partIndex === b.partIndex;
+}
+
+function isLinkPairValid(a: LinkEndpoint, b: LinkEndpoint) {
+  return a.kind !== b.kind && a.pieceId !== b.pieceId;
+}
+
+function normalizeLink(a: LinkEndpoint, b: LinkEndpoint): PieceLink {
+  const first = `${a.pieceId}:${a.kind}:${a.partIndex}`;
+  const second = `${b.pieceId}:${b.kind}:${b.partIndex}`;
+  return first <= second ? { a, b } : { a: b, b: a };
+}
+
+function cleanupLinks(links: PieceLink[], pieces: PlacedPiece[]) {
+  const validAreas = pieces.flatMap(getLinkableAreasForPiece);
+
+  return links.filter((link) => {
+    const hasA = validAreas.some((area) => isSameLinkEndpoint(area.endpoint, link.a));
+    const hasB = validAreas.some((area) => isSameLinkEndpoint(area.endpoint, link.b));
+    return hasA && hasB && isLinkPairValid(link.a, link.b);
+  });
+}
+
 function selectionExactlyMatchesPiece(selection: GridCell[], placedPiece: PlacedPiece) {
   if (selection.length === 0) {
     return false;
@@ -1260,7 +1429,7 @@ function trimPiecesToBoard(pieces: PlacedPiece[], columns: number, rows: number)
   });
 }
 
-function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[]) {
+function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[], links: PieceLink[]) {
   const instances = pieces
     .map((placedPiece) => {
       const definition = catalogData.pieces[placedPiece.pieceKey];
@@ -1301,15 +1470,21 @@ function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[]) {
       return Number(a.x) - Number(b.x);
     });
 
+  const serializedLinks = cleanupLinks(links, pieces).map((link) => ({
+    a: link.a,
+    b: link.b,
+  }));
+
   return JSON.stringify(
     {
-      schemaVersion: 1,
+      schemaVersion: 2,
       board: {
         columns,
         rows,
         tileAsset: "board.base",
       },
       instances,
+      ...(serializedLinks.length > 0 ? { links: serializedLinks } : {}),
     },
     null,
     2,
@@ -1329,6 +1504,10 @@ function parseImportedPieces(raw: string) {
       mirrored?: boolean;
       text?: PieceText;
       textSize?: number[];
+    }>;
+    links?: Array<{
+      a?: Partial<LinkEndpoint>;
+      b?: Partial<LinkEndpoint>;
     }>;
   };
 
@@ -1369,6 +1548,34 @@ function parseImportedPieces(raw: string) {
     columns: importedColumns,
     rows: importedRows,
     pieces: nextPieces,
+    links: cleanupLinks(
+      (parsed.links ?? [])
+        .map((link) => {
+          if (
+            !link?.a?.pieceId ||
+            !link?.b?.pieceId ||
+            (link.a.kind !== "selector" && link.a.kind !== "switchPart") ||
+            (link.b.kind !== "selector" && link.b.kind !== "switchPart")
+          ) {
+            return null;
+          }
+
+          return normalizeLink(
+            {
+              pieceId: link.a.pieceId,
+              kind: link.a.kind,
+              partIndex: Number.isInteger(link.a.partIndex) ? Number(link.a.partIndex) : 0,
+            },
+            {
+              pieceId: link.b.pieceId,
+              kind: link.b.kind,
+              partIndex: Number.isInteger(link.b.partIndex) ? Number(link.b.partIndex) : 0,
+            },
+          );
+        })
+        .filter((link): link is PieceLink => link !== null),
+      nextPieces,
+    ),
   };
 }
 
@@ -1376,10 +1583,16 @@ export default function BoardDemo() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const [rows, setRows] = useState(INITIAL_ROWS);
   const [pieces, setPieces] = useState<PlacedPiece[]>([]);
+  const [links, setLinks] = useState<PieceLink[]>([]);
   const [selection, setSelection] = useState<GridCell[]>([]);
   const [pieceSearch, setPieceSearch] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkDrag, setLinkDrag] = useState<LinkDragState | null>(null);
+  const [showTileCoords, setShowTileCoords] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showConnections, setShowConnections] = useState(true);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const suppressContextMenuRef = useRef(false);
 
   const compatiblePieces = useMemo(() => getCompatiblePieces(selection), [selection]);
   const filteredCompatiblePieces = useMemo(() => {
@@ -1402,14 +1615,20 @@ export default function BoardDemo() {
     [pieces, selection],
   );
   const selectionOrigin = selection.length > 0 ? getSelectionOrigin(selection) : null;
-  const exportJson = useMemo(() => buildExportJson(columns, rows, pieces), [columns, rows, pieces]);
+  const exportJson = useMemo(() => buildExportJson(columns, rows, pieces, links), [columns, rows, pieces, links]);
+  const linkableAreas = useMemo(() => pieces.flatMap(getLinkableAreasForPiece), [pieces]);
+  const linkCenters = useMemo(() => new Map(linkableAreas.map((area) => [`${area.endpoint.pieceId}:${area.endpoint.kind}:${area.endpoint.partIndex}`, area.center])), [linkableAreas]);
 
   function updateBoardSize(nextColumns: number, nextRows: number) {
     const clampedColumns = clampBoardValue(nextColumns, columns);
     const clampedRows = clampBoardValue(nextRows, rows);
     setColumns(clampedColumns);
     setRows(clampedRows);
-    setPieces((current) => trimPiecesToBoard(current, clampedColumns, clampedRows));
+    setPieces((current) => {
+      const trimmed = trimPiecesToBoard(current, clampedColumns, clampedRows);
+      setLinks((existing) => cleanupLinks(existing, trimmed));
+      return trimmed;
+    });
     setSelection((current) => current.filter((cell) => cell.x < clampedColumns && cell.y < clampedRows));
   }
 
@@ -1437,6 +1656,7 @@ export default function BoardDemo() {
     const nextPiece = createPlacedPiece(pieceKey, selectionOrigin.x, selectionOrigin.y);
     setPieces((current) => {
       const cleaned = current.filter((placedPiece) => !intersectsSelection(placedPiece, selection));
+      setLinks((existing) => cleanupLinks(existing, cleaned));
       return [...cleaned, nextPiece];
     });
   }
@@ -1446,16 +1666,26 @@ export default function BoardDemo() {
       return;
     }
 
-    setPieces((current) => current.filter((placedPiece) => !intersectsSelection(placedPiece, selection)));
+    setPieces((current) => {
+      const kept = current.filter((placedPiece) => !intersectsSelection(placedPiece, selection));
+      setLinks((existing) => cleanupLinks(existing, kept));
+      return kept;
+    });
   }
 
   function clearBoard() {
     setPieces([]);
+    setLinks([]);
     setSelection([]);
+    setLinkDrag(null);
   }
 
   function removePiece(target: PlacedPiece) {
-    setPieces((current) => current.filter((placedPiece) => placedPiece.id !== target.id));
+    setPieces((current) => {
+      const kept = current.filter((placedPiece) => placedPiece.id !== target.id);
+      setLinks((existing) => cleanupLinks(existing, kept));
+      return kept;
+    });
     setSelection((current) => (selectionExactlyMatchesPiece(current, target) ? [] : current));
   }
 
@@ -1467,6 +1697,80 @@ export default function BoardDemo() {
     }
 
     removePiece(target);
+  }
+
+  function getLinkableAreaAtCell(cell: GridCell) {
+    return linkableAreas.find((area) => area.cells.some((areaCell) => isSameCell(areaCell, cell))) ?? null;
+  }
+
+  function getBoardPointForCell(cell: GridCell) {
+    return {
+      x: (cell.x + 0.5) * BOARD_TILE,
+      y: (cell.y + 0.5) * BOARD_TILE,
+    };
+  }
+
+  function beginLinkDrag(cell: GridCell) {
+    const area = getLinkableAreaAtCell(cell);
+    if (!area) {
+      return false;
+    }
+
+    suppressContextMenuRef.current = true;
+    setLinkDrag({
+      start: area.endpoint,
+      currentCell: cell,
+      currentPoint: {
+        x: area.center.x * BOARD_TILE,
+        y: area.center.y * BOARD_TILE,
+      },
+      hoveredEndpoint: area.endpoint,
+      moved: false,
+    });
+    return true;
+  }
+
+  function updateLinkDrag(cell: GridCell) {
+    setLinkDrag((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const area = getLinkableAreaAtCell(cell);
+      return {
+        ...current,
+        currentCell: cell,
+        currentPoint: getBoardPointForCell(cell),
+        hoveredEndpoint: area?.endpoint ?? null,
+        moved: current.moved || !isSameCell(current.currentCell, cell),
+      };
+    });
+  }
+
+  function finishLinkDrag() {
+    setLinkDrag((current) => {
+      if (!current) {
+        return null;
+      }
+
+      const target = current.hoveredEndpoint;
+      if (target && current.moved && isLinkPairValid(current.start, target)) {
+        const nextLink = normalizeLink(current.start, target);
+        setLinks((existing) => {
+          const cleaned = existing.filter(
+            (link) =>
+              !isSameLinkEndpoint(link.a, nextLink.a) &&
+              !isSameLinkEndpoint(link.b, nextLink.a) &&
+              !isSameLinkEndpoint(link.a, nextLink.b) &&
+              !isSameLinkEndpoint(link.b, nextLink.b),
+          );
+          return [...cleaned, nextLink];
+        });
+      }
+
+      suppressContextMenuRef.current = current.moved;
+      return null;
+    });
   }
 
   async function copyJson() {
@@ -1578,8 +1882,10 @@ export default function BoardDemo() {
     setColumns(imported.columns);
     setRows(imported.rows);
     setPieces(imported.pieces);
+    setLinks(imported.links);
     setSelection([]);
     setPieceSearch("");
+    setLinkDrag(null);
   }
 
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
@@ -1635,6 +1941,18 @@ export default function BoardDemo() {
                 Clear
               </button>
 
+              <button type="button" className={styles.iconButton} onClick={() => setShowTileCoords((current) => !current)}>
+                {showTileCoords ? "Hide Numbers" : "Show Numbers"}
+              </button>
+
+              <button type="button" className={styles.iconButton} onClick={() => setShowGrid((current) => !current)}>
+                {showGrid ? "Hide Grid" : "Show Grid"}
+              </button>
+
+              <button type="button" className={styles.iconButton} onClick={() => setShowConnections((current) => !current)}>
+                {showConnections ? "Hide Connections" : "Show Connections"}
+              </button>
+
               <button type="button" className={styles.iconButton} onClick={eraseSelection} disabled={selection.length === 0}>
                 Erase
               </button>
@@ -1647,7 +1965,7 @@ export default function BoardDemo() {
             <header className={styles.panelHeader}>
               <div>
                 <h2>Board</h2>
-                <p>{selection.length === 0 ? "Click to select. Ctrl/Cmd for multi-select." : `${selection.length} tile(s) selected.`}</p>
+                <p>{selection.length === 0 ? "Click to select. Ctrl/Cmd for multi-select. Hold right-click and drag between selector/switch parts to link." : `${selection.length} tile(s) selected.`}</p>
               </div>
               <div className={styles.statLine}>
                 <span>{pieces.length} placed</span>
@@ -1668,6 +1986,42 @@ export default function BoardDemo() {
                   } as CSSProperties
                 }
               >
+                {showConnections || linkDrag ? (
+                  <svg className={styles.linkOverlay} viewBox={`0 0 ${columns * BOARD_TILE} ${rows * BOARD_TILE}`} aria-hidden="true">
+                    {showConnections
+                      ? links.map((link) => {
+                          const start = linkCenters.get(`${link.a.pieceId}:${link.a.kind}:${link.a.partIndex}`);
+                          const end = linkCenters.get(`${link.b.pieceId}:${link.b.kind}:${link.b.partIndex}`);
+
+                          if (!start || !end) {
+                            return null;
+                          }
+
+                          return (
+                            <line
+                              key={`${link.a.pieceId}:${link.a.kind}:${link.a.partIndex}-${link.b.pieceId}:${link.b.kind}:${link.b.partIndex}`}
+                              className={styles.linkLine}
+                              x1={start.x * BOARD_TILE}
+                              y1={start.y * BOARD_TILE}
+                              x2={end.x * BOARD_TILE}
+                              y2={end.y * BOARD_TILE}
+                            />
+                          );
+                        })
+                      : null}
+
+                    {linkDrag ? (
+                      <line
+                        className={styles.linkLineDraft}
+                        x1={(linkCenters.get(`${linkDrag.start.pieceId}:${linkDrag.start.kind}:${linkDrag.start.partIndex}`)?.x ?? 0) * BOARD_TILE}
+                        y1={(linkCenters.get(`${linkDrag.start.pieceId}:${linkDrag.start.kind}:${linkDrag.start.partIndex}`)?.y ?? 0) * BOARD_TILE}
+                        x2={linkDrag.currentPoint.x}
+                        y2={linkDrag.currentPoint.y}
+                      />
+                    ) : null}
+                  </svg>
+                ) : null}
+
                 <div className={styles.boardPieces}>
                   {pieces.map((placedPiece) => {
                     const piece = catalogData.pieces[placedPiece.pieceKey];
@@ -1700,7 +2054,7 @@ export default function BoardDemo() {
                   })}
                 </div>
 
-                <div className={styles.tileGrid}>
+                <div className={`${styles.tileGrid} ${!showGrid ? styles.tileGridHidden : ""}`}>
                   {Array.from({ length: rows * columns }, (_, index) => {
                     const x = index % columns;
                     const y = Math.floor(index / columns);
@@ -1712,15 +2066,32 @@ export default function BoardDemo() {
                         type="button"
                         className={`${styles.tileButton} ${selected ? styles.tileButtonSelected : ""}`}
                         onClick={(event) => handleTileClick({ x, y }, event)}
+                        onPointerDown={(event) => {
+                          if (event.button === 2) {
+                            beginLinkDrag({ x, y });
+                          }
+                        }}
+                        onPointerEnter={(event) => {
+                          if ((event.buttons & 2) === 2 && linkDrag) {
+                            updateLinkDrag({ x, y });
+                          }
+                        }}
+                        onPointerUp={(event) => {
+                          if (event.button === 2) {
+                            finishLinkDrag();
+                          }
+                        }}
                         onContextMenu={(event) => {
                           event.preventDefault();
+                          if (suppressContextMenuRef.current) {
+                            suppressContextMenuRef.current = false;
+                            return;
+                          }
                           removePieceAtCell({ x, y });
                         }}
                         aria-label={`Tile ${x}, ${y}`}
                       >
-                        <span className={styles.tileCoord}>
-                          {x},{y}
-                        </span>
+                        {showTileCoords ? <span className={styles.tileCoord}>{x},{y}</span> : null}
                       </button>
                     );
                   })}

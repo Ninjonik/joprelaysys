@@ -197,6 +197,31 @@
   pointer-events: none;
 }
 
+.linkOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.linkLine,
+.linkLineDraft {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.linkLine {
+  stroke: rgba(19, 33, 31, 0.78);
+  stroke-width: 4;
+}
+
+.linkLineDraft {
+  stroke: rgba(69, 121, 213, 0.8);
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+}
+
 .boardPiece {
   position: absolute;
   filter: drop-shadow(0 8px 18px rgba(17, 31, 28, 0.12));
@@ -215,6 +240,15 @@
   grid-template-columns: repeat(var(--board-columns), var(--board-tile));
   grid-template-rows: repeat(var(--board-rows), var(--board-tile));
   z-index: 2;
+}
+
+.tileGridHidden .tileButton {
+  border-color: transparent;
+  background: transparent;
+}
+
+.tileGridHidden .tileButton:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .tileButton {

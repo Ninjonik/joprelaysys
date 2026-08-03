@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import type { CSSProperties, MouseEvent, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import type { ChangeEvent, CSSProperties, MouseEvent, ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./page.module.css";
 import catalogData from "./data/piece-catalog.json";
 
@@ -915,20 +915,19 @@ function getPieceOccupiedCells(placedPiece: PlacedPiece) {
   }));
 }
 
-function selectionMatchesPiece(selection: GridCell[], placedPiece: PlacedPiece) {
+function selectionExactlyMatchesPiece(selection: GridCell[], placedPiece: PlacedPiece) {
   if (selection.length === 0) {
     return false;
   }
 
-  const pieceCells = getPieceOccupiedCells(placedPiece);
-  if (pieceCells.length !== selection.length) {
+  const pieceCells = sortCells(getPieceOccupiedCells(placedPiece));
+  const sortedSelection = sortCells(selection);
+
+  if (pieceCells.length !== sortedSelection.length) {
     return false;
   }
 
-  const normalizedSelection = normalizeSelection(selection);
-  const normalizedPiece = normalizeSelection(pieceCells);
-
-  return normalizedSelection.every((cell, index) => isSameCell(cell, normalizedPiece[index]));
+  return pieceCells.every((cell, index) => isSameCell(cell, sortedSelection[index]));
 }
 
 function getCompatiblePieces(selection: GridCell[]) {
@@ -1057,6 +1056,56 @@ function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[]) {
   );
 }
 
+function parseImportedPieces(raw: string) {
+  const parsed = JSON.parse(raw) as {
+    board?: { columns?: number; rows?: number };
+    instances?: Array<{
+      id?: string;
+      pieceKey?: string;
+      x?: number;
+      y?: number;
+      state?: string;
+      rotation?: number;
+      text?: PieceText;
+    }>;
+  };
+
+  const importedColumns = clampBoardValue(Number(parsed.board?.columns), INITIAL_COLUMNS);
+  const importedRows = clampBoardValue(Number(parsed.board?.rows), INITIAL_ROWS);
+  const nextPieces: PlacedPiece[] = [];
+
+  for (const instance of parsed.instances ?? []) {
+    if (!instance?.pieceKey || !(instance.pieceKey in catalogData.pieces)) {
+      continue;
+    }
+
+    const pieceKey = instance.pieceKey as PieceKey;
+    const definition = catalogData.pieces[pieceKey];
+    const x = Math.max(0, Math.floor(Number(instance.x ?? 0)));
+    const y = Math.max(0, Math.floor(Number(instance.y ?? 0)));
+
+    if (x + definition.bounds.width > importedColumns || y + definition.bounds.height > importedRows) {
+      continue;
+    }
+
+    nextPieces.push({
+      id: typeof instance.id === "string" && instance.id.length > 0 ? instance.id : crypto.randomUUID(),
+      pieceKey,
+      x,
+      y,
+      state: typeof instance.state === "string" ? instance.state : getDefaultState(definition),
+      rotation: instance.rotation === 180 ? 180 : 0,
+      text: instance.text,
+    });
+  }
+
+  return {
+    columns: importedColumns,
+    rows: importedRows,
+    pieces: nextPieces,
+  };
+}
+
 export default function BoardDemo() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const [rows, setRows] = useState(INITIAL_ROWS);
@@ -1064,6 +1113,7 @@ export default function BoardDemo() {
   const [selection, setSelection] = useState<GridCell[]>([]);
   const [pieceSearch, setPieceSearch] = useState("");
   const [copied, setCopied] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const compatiblePieces = useMemo(() => getCompatiblePieces(selection), [selection]);
   const filteredCompatiblePieces = useMemo(() => {
@@ -1082,7 +1132,7 @@ export default function BoardDemo() {
     });
   }, [compatiblePieces, pieceSearch]);
   const exactSelectedPiece = useMemo(
-    () => pieces.find((placedPiece) => selectionMatchesPiece(selection, placedPiece)) ?? null,
+    () => pieces.find((placedPiece) => selectionExactlyMatchesPiece(selection, placedPiece)) ?? null,
     [pieces, selection],
   );
   const selectionOrigin = selection.length > 0 ? getSelectionOrigin(selection) : null;
@@ -1140,7 +1190,7 @@ export default function BoardDemo() {
 
   function removePiece(target: PlacedPiece) {
     setPieces((current) => current.filter((placedPiece) => placedPiece.id !== target.id));
-    setSelection((current) => (selectionMatchesPiece(current, target) ? [] : current));
+    setSelection((current) => (selectionExactlyMatchesPiece(current, target) ? [] : current));
   }
 
   async function copyJson() {
@@ -1204,6 +1254,27 @@ export default function BoardDemo() {
           : placedPiece,
       ),
     );
+  }
+
+  function importJson(raw: string) {
+    const imported = parseImportedPieces(raw);
+    setColumns(imported.columns);
+    setRows(imported.rows);
+    setPieces(imported.pieces);
+    setSelection([]);
+    setPieceSearch("");
+  }
+
+  async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const raw = await file.text();
+    importJson(raw);
+    event.target.value = "";
   }
 
   const selectedPieceDefinition = exactSelectedPiece ? catalogData.pieces[exactSelectedPiece.pieceKey] : null;
@@ -1342,7 +1413,6 @@ export default function BoardDemo() {
               <header className={styles.panelHeader}>
                 <div>
                   <h2>Matching pieces</h2>
-                  <p>Footprint matches for the current selection.</p>
                 </div>
               </header>
 
@@ -1390,7 +1460,6 @@ export default function BoardDemo() {
               <header className={styles.panelHeader}>
                 <div>
                   <h2>Selected piece</h2>
-                  <p>Edit state and label text after placing a component.</p>
                 </div>
               </header>
 
@@ -1398,26 +1467,15 @@ export default function BoardDemo() {
                 <p className={styles.emptyState}>Select the full footprint of one placed piece to edit it.</p>
               ) : (
                 <div className={styles.inspector}>
-                  <div className={styles.inspectorPreview}>
-                    <PiecePreview
-                      pieceKey={exactSelectedPiece.pieceKey}
-                      piece={selectedPieceDefinition}
-                      state={exactSelectedPiece.state}
-                      rotation={exactSelectedPiece.rotation}
-                      text={exactSelectedPiece.text}
-                      tileSize={PREVIEW_TILE}
-                    />
-                  </div>
-
                   <p className={styles.metaLine}>
                     Anchor: [{exactSelectedPiece.x}, {exactSelectedPiece.y}]
                   </p>
 
                   <label className={styles.field}>
-                    <span>Rotation</span>
                     <select
                       value={exactSelectedPiece.rotation}
                       onChange={(event) => updateSelectedPieceRotation(Number(event.target.value) as PieceRotation)}
+                      aria-label="Rotation"
                     >
                       <option value={0}>0°</option>
                       <option value={180}>180°</option>
@@ -1426,8 +1484,7 @@ export default function BoardDemo() {
 
                   {getStateOptions(selectedPieceDefinition, exactSelectedPiece.pieceKey).length > 0 ? (
                     <label className={styles.field}>
-                      <span>State</span>
-                      <select value={exactSelectedPiece.state} onChange={(event) => updateSelectedPieceState(event.target.value)}>
+                      <select value={exactSelectedPiece.state} onChange={(event) => updateSelectedPieceState(event.target.value)} aria-label="State">
                         {getStateOptions(selectedPieceDefinition, exactSelectedPiece.pieceKey).map((option) => (
                           <option key={option.id} value={option.id}>
                             {option.label}
@@ -1439,12 +1496,13 @@ export default function BoardDemo() {
 
                   {selectedPieceTextLayouts.map((layout, index) => (
                     <label key={`${layout.label}-${index}`} className={styles.field}>
-                      <span>{layout.label}</span>
                       <input
                         type="text"
                         maxLength={layout.maxLength ?? 24}
                         value={selectedPieceTextValues[index] ?? ""}
                         onChange={(event) => updateSelectedPieceText(index, event.target.value)}
+                        placeholder={layout.label}
+                        aria-label={layout.label}
                       />
                     </label>
                   ))}
@@ -1456,11 +1514,22 @@ export default function BoardDemo() {
               <header className={styles.panelHeader}>
                 <div>
                   <h2>Export JSON</h2>
-                  <p>Copy the authored layout to the clipboard.</p>
                 </div>
-                <button type="button" className={styles.secondaryButton} onClick={copyJson}>
-                  {copied ? "Copied" : "Export JSON"}
-                </button>
+                <div className={styles.actionRow}>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFile}
+                    className={styles.hiddenInput}
+                  />
+                  <button type="button" className={styles.secondaryButton} onClick={() => importInputRef.current?.click()}>
+                    Import JSON
+                  </button>
+                  <button type="button" className={styles.secondaryButton} onClick={copyJson}>
+                    {copied ? "Copied" : "Export JSON"}
+                  </button>
+                </div>
               </header>
             </section>
           </aside>

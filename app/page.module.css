@@ -290,25 +290,15 @@
 
 .inspector {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-.inspectorPreview {
-  min-height: 110px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: rgba(177, 185, 181, 0.52);
-  background-image: url("/assets/board/Board_1Square.svg");
-  background-size: 28px 28px;
-}
-
 .field {
   display: grid;
-  gap: 7px;
+  gap: 0;
 }
 
 .searchField {
@@ -334,14 +324,6 @@
   color: #12201e;
 }
 
-.field span {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #50605c;
-}
-
 .field input,
 .field select,
 .exportBox {
@@ -361,6 +343,29 @@
 .field input {
   font-family: Consolas, "Courier New", monospace;
   text-transform: uppercase;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.secondaryButton {
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 11px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(23, 37, 34, 0.9);
+  color: #eef2ef;
+}
+
+.hiddenInput {
+  display: none;
 }
 
 .exportBox {

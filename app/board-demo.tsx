@@ -952,6 +952,10 @@ function intersectsSelection(placedPiece: PlacedPiece, selection: GridCell[]) {
   return occupiedCells.some((cell) => selection.some((selected) => isSameCell(cell, selected)));
 }
 
+function pieceOccupiesCell(placedPiece: PlacedPiece, cell: GridCell) {
+  return getPieceOccupiedCells(placedPiece).some((occupied) => isSameCell(occupied, cell));
+}
+
 function sanitizeTextValue(pieceKey: PieceKey, value: PieceText | undefined) {
   const layouts = getTextLayouts(pieceKey);
 
@@ -1193,6 +1197,16 @@ export default function BoardDemo() {
     setSelection((current) => (selectionExactlyMatchesPiece(current, target) ? [] : current));
   }
 
+  function removePieceAtCell(cell: GridCell) {
+    const target = [...pieces].reverse().find((placedPiece) => pieceOccupiesCell(placedPiece, cell));
+
+    if (!target) {
+      return;
+    }
+
+    removePiece(target);
+  }
+
   async function copyJson() {
     await navigator.clipboard.writeText(exportJson);
     setCopied(true);
@@ -1363,12 +1377,7 @@ export default function BoardDemo() {
                           width: piece.bounds.width * BOARD_TILE,
                           height: piece.bounds.height * BOARD_TILE,
                         }}
-                        onClick={() => setSelection(getPieceOccupiedCells(placedPiece))}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          removePiece(placedPiece);
-                        }}
-                        title="Right-click to remove"
+                        title="Right-click a tile to remove"
                       >
                         <PiecePreview
                           pieceKey={placedPiece.pieceKey}
@@ -1395,6 +1404,10 @@ export default function BoardDemo() {
                         type="button"
                         className={`${styles.tileButton} ${selected ? styles.tileButtonSelected : ""}`}
                         onClick={(event) => handleTileClick({ x, y }, event)}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          removePieceAtCell({ x, y });
+                        }}
                         aria-label={`Tile ${x}, ${y}`}
                       >
                         <span className={styles.tileCoord}>

@@ -200,8 +200,8 @@
 .boardPiece {
   position: absolute;
   filter: drop-shadow(0 8px 18px rgba(17, 31, 28, 0.12));
-  pointer-events: auto;
-  z-index: 2;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .boardPieceSelected {
@@ -214,7 +214,7 @@
   display: grid;
   grid-template-columns: repeat(var(--board-columns), var(--board-tile));
   grid-template-rows: repeat(var(--board-rows), var(--board-tile));
-  z-index: 1;
+  z-index: 2;
 }
 
 .tileButton {

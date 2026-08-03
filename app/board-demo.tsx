@@ -760,6 +760,10 @@ function shouldPreserveTextCase(pieceKey: PieceKey, index: number) {
   return pieceKey === "button.sign.sealedCounter" && index === 0;
 }
 
+function getTextMaxLength(layout: TextLayout) {
+  return layout.label === "Note" ? undefined : layout.maxLength;
+}
+
 function isDefaultTextSize(pieceKey: PieceKey, text: PieceText | undefined, textSize: PieceTextSize | undefined) {
   const layouts = getTextLayouts(pieceKey);
   if (layouts.length === 0 || !textSize || textSize.length === 0) {
@@ -1835,15 +1839,9 @@ export default function BoardDemo() {
                       <label className={styles.field}>
                         <textarea
                           rows={2}
-                          maxLength={layout.maxLength ?? 24}
+                          maxLength={getTextMaxLength(layout)}
                           value={selectedPieceTextValues[index] ?? ""}
                           onChange={(event) => updateSelectedPieceText(index, event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" && !event.shiftKey) {
-                              event.preventDefault();
-                              (event.currentTarget as HTMLTextAreaElement).blur();
-                            }
-                          }}
                           placeholder={layout.label}
                           aria-label={layout.label}
                         />

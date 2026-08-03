@@ -1,8 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import type { ChangeEvent, CSSProperties, MouseEvent, ReactNode } from "react";
+import type { ChangeEvent, MouseEvent, ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
+import { BoardLinkOverlay } from "./board/board-link-overlay";
+import { BoardSurface } from "./board/board-surface";
+import { BoardTileGrid } from "./board/board-tile-grid";
+import { PlacedPieceLayer } from "./board/placed-piece-layer";
 import styles from "./page.module.css";
 import catalogData from "./data/piece-catalog.json";
 
@@ -46,6 +50,8 @@ type SwitchOverlayShape = OverlayRect & {
   clip?: OverlayRect;
 };
 
+type SwitchMovingPart = "part0" | "part1" | null;
+
 type SwitchRoute = "normal" | "reverse" | "stem" | "upper";
 type SwitchAspect = "clear" | "reserved" | "occupied" | "moving";
 type CrossoverRoute = "normal" | "reverse";
@@ -58,7 +64,7 @@ type GridCell = {
 export type PieceRotation = 0 | 180;
 export type PieceMirror = boolean;
 
-type PlacedPiece = {
+export type PlacedPiece = {
   id: string;
   pieceKey: PieceKey;
   x: number;
@@ -78,7 +84,7 @@ type LinkEndpoint = {
   partIndex: number;
 };
 
-type PieceLink = {
+export type PieceLink = {
   a: LinkEndpoint;
   b: LinkEndpoint;
 };
@@ -103,9 +109,10 @@ type LinkDragState = {
   moved: boolean;
 };
 
-const INITIAL_COLUMNS = 24;
-const INITIAL_ROWS = 14;
-const BOARD_TILE = 42;
+export const catalog = catalogData;
+export const INITIAL_COLUMNS = 24;
+export const INITIAL_ROWS = 14;
+export const BOARD_TILE = 42;
 const PREVIEW_TILE = 38;
 const SVG_TILE_UNIT = 75;
 const PLACEABLE_EXCLUSIONS = new Set<PieceKey>(["board.base"]);
@@ -490,12 +497,21 @@ export function getStateOptions(piece: PieceDefinition, pieceKey?: PieceKey) {
 }
 
 export function getDefaultState(piece: PieceDefinition) {
-  return "defaultState" in piece.stateModel ? piece.stateModel.defaultState : "static";
+  if (!("defaultState" in piece.stateModel)) {
+    return "static";
+  }
+
+  if (piece.stateModel.kind === "switchPosition") {
+    const state = piece.stateModel.defaultState;
+    return state.includes(".") ? state : `${state}.clear`;
+  }
+
+  return piece.stateModel.defaultState;
 }
 
 function getSwitchColor(aspect: SwitchAspect) {
-  if (aspect === "occupied") return "#f05454";
-  if (aspect === "reserved" || aspect === "moving") return "#f6f7f8";
+  if (aspect === "occupied" || aspect === "moving") return "#f05454";
+  if (aspect === "reserved") return "#f6f7f8";
   return "transparent";
 }
 
@@ -505,6 +521,7 @@ function parseSwitchState(pieceKey: PieceKey, rawState: string) {
       route: (pieceKey.includes("extended") ? "reverse" : "normal") as SwitchRoute,
       aspect: "moving" as SwitchAspect,
       pulse: true,
+      movingPart: null as SwitchMovingPart,
     };
   }
 
@@ -522,11 +539,78 @@ function parseSwitchState(pieceKey: PieceKey, rawState: string) {
   };
 
   const normalized = legacyMap[rawState] ?? rawState;
-  const [routePart, aspectPart] = normalized.split(".");
+  const [routePart, aspectPart, movingPartPart] = normalized.split(".");
   const route = (["normal", "reverse", "stem", "upper"].includes(routePart) ? routePart : "normal") as SwitchRoute;
-  const aspect = (["clear", "reserved", "occupied"].includes(aspectPart) ? aspectPart : "clear") as SwitchAspect;
+  const aspect = (["clear", "reserved", "occupied", "moving"].includes(aspectPart) ? aspectPart : "clear") as SwitchAspect;
+  const movingPart = movingPartPart === "part0" || movingPartPart === "part1" ? movingPartPart : null;
 
-  return { route, aspect, pulse: false };
+  return { route, aspect, pulse: aspect === "moving", movingPart: movingPart as SwitchMovingPart };
+}
+
+function getExtendedMovingOverlayShapes(pieceKey: PieceKey, movingPart: SwitchMovingPart) {
+  if (!pieceKey.startsWith("switch.extended") || movingPart === null) {
+    return [];
+  }
+
+  if (pieceKey.includes(".mirror")) {
+    if (movingPart === "part0") {
+      return [
+        { x: 105.77, y: 114.25, width: 8, height: 65, rx: 4, transform: "translate(-68.65 104.89) rotate(-40)" },
+        { x: 80, y: 183.5, width: 65, height: 8, rx: 4 },
+      ];
+    }
+
+    return [
+      { x: 42.77, y: 39.16, width: 8, height: 65, rx: 4, transform: "translate(-35.12 46.83) rotate(-40)" },
+      { x: 5, y: 108.5, width: 65, height: 8, rx: 4 },
+    ];
+  }
+
+  if (movingPart === "part0") {
+    return [
+      { x: 70.73, y: 67.66, width: 65, height: 8, rx: 4, transform: "translate(-18.02 104.68) rotate(-50)" },
+      { x: 80, y: 108.5, width: 65, height: 8, rx: 4 },
+    ];
+  }
+
+  return [
+    { x: 7.73, y: 142.75, width: 65, height: 8, rx: 4, transform: "translate(-98.04 83.24) rotate(-50)" },
+    { x: 5, y: 183.5, width: 65, height: 8, rx: 4 },
+  ];
+}
+
+function getSingleMovingOverlayShapes(pieceKey: PieceKey) {
+  if (pieceKey.startsWith("switch.single.mirror")) {
+    return [
+      { x: 5, y: 108.5, width: 65, height: 8, rx: 4 },
+      { x: 33.5, y: 42.5, width: 8, height: 65, rx: 4, transform: "translate(-39.44 41.65) rotate(-40)" },
+    ];
+  }
+
+  if (pieceKey.startsWith("switch.single")) {
+    return [
+      { x: 5, y: 108.5, width: 65, height: 8, rx: 4 },
+      { x: 5, y: 71, width: 65, height: 8, rx: 4, transform: "translate(-44.06 55.52) rotate(-50)" },
+    ];
+  }
+
+  return [];
+}
+
+function getCrossoverMovingGeometry(pieceKey: PieceKey, section: "top" | "bottom") {
+  if (pieceKey.startsWith("switch.crossover.mirror")) {
+    if (section === "top") {
+      return ["M 8 37.5 H 67", "M 18.65 53.2 L 35.7 73.45"];
+    }
+
+    return ["M 8 112.5 H 67", "M 56.35 96.8 L 39.3 76.55"];
+  }
+
+  if (section === "top") {
+    return ["M 8 37.5 H 67", "M 56.35 53.2 L 39.3 73.45"];
+  }
+
+  return ["M 8 112.5 H 67", "M 18.65 96.8 L 35.7 76.55"];
 }
 
 function parseCrossoverState(rawState: string) {
@@ -535,8 +619,8 @@ function parseCrossoverState(rawState: string) {
     : "top:normal.clear;bottom:normal.clear";
   const sections = normalized.split(";");
   const defaults = {
-    top: { route: "normal" as CrossoverRoute, aspect: "clear" as Exclude<SwitchAspect, "moving"> },
-    bottom: { route: "normal" as CrossoverRoute, aspect: "clear" as Exclude<SwitchAspect, "moving"> },
+    top: { route: "normal" as CrossoverRoute, aspect: "clear" as SwitchAspect, pulse: false },
+    bottom: { route: "normal" as CrossoverRoute, aspect: "clear" as SwitchAspect, pulse: false },
   };
 
   for (const section of sections) {
@@ -548,7 +632,8 @@ function parseCrossoverState(rawState: string) {
     const [routePart, aspectPart] = value.split(".");
     defaults[name] = {
       route: routePart === "reverse" ? "reverse" : "normal",
-      aspect: aspectPart === "reserved" || aspectPart === "occupied" ? aspectPart : "clear",
+      aspect: aspectPart === "reserved" || aspectPart === "occupied" || aspectPart === "moving" ? aspectPart : "clear",
+      pulse: aspectPart === "moving",
     };
   }
 
@@ -568,7 +653,9 @@ function getStateColor(kind: string, state: string) {
 
   if (kind === "switchCrossover") {
     const parsed = parseCrossoverState(state);
-    if (parsed.top.aspect === "occupied" || parsed.bottom.aspect === "occupied") return "#f05454";
+    if (parsed.top.aspect === "occupied" || parsed.top.aspect === "moving" || parsed.bottom.aspect === "occupied" || parsed.bottom.aspect === "moving") {
+      return "#f05454";
+    }
     if (parsed.top.aspect === "reserved" || parsed.bottom.aspect === "reserved") return "#f6f7f8";
     return "transparent";
   }
@@ -920,7 +1007,13 @@ function renderOverlay(
   if (kind === "switchPosition" && !suppressStates) {
     const parsed = parseSwitchState(pieceKey, state);
     const pathColor = getSwitchColor(parsed.aspect);
-    const shapes = getSwitchOverlayShapes(pieceKey, state);
+    const shapes: SwitchOverlayShape[] = parsed.aspect === "moving"
+      ? (
+          pieceKey.startsWith("switch.single")
+            ? getSingleMovingOverlayShapes(pieceKey)
+            : getExtendedMovingOverlayShapes(pieceKey, parsed.movingPart)
+        )
+      : getSwitchOverlayShapes(pieceKey, state);
 
     if (parsed.aspect !== "clear") {
       if (shapes.length > 0) {
@@ -937,7 +1030,7 @@ function renderOverlay(
                 fill={pathColor}
                 opacity={0.92}
                 transform={shape.transform}
-                className={parsed.pulse ? styles.pulsePath : ""}
+                className={parsed.pulse ? styles.fastFlashPath : ""}
               />
             );
 
@@ -969,7 +1062,7 @@ function renderOverlay(
               strokeLinecap="round"
               strokeLinejoin="round"
               opacity={0.92}
-              className={parsed.pulse ? styles.pulsePath : ""}
+              className={parsed.pulse ? styles.fastFlashPath : ""}
             />
           )),
         );
@@ -1002,8 +1095,11 @@ function renderOverlay(
           }
 
           const pathColor = getSwitchColor(segment.aspect);
+          const movingPaths = segment.aspect === "moving"
+            ? getCrossoverMovingGeometry(pieceKey, segment.key as "top" | "bottom")
+            : segment.paths;
 
-          return segment.paths.map((path, index) => (
+          return movingPaths.map((path, index) => (
             <path
               key={`${segment.key}-${index}`}
               d={path}
@@ -1013,6 +1109,7 @@ function renderOverlay(
               strokeLinecap="round"
               strokeLinejoin="round"
               opacity={0.92}
+              className={segment.aspect === "moving" ? styles.fastFlashPath : ""}
             />
           ));
         }),
@@ -1491,7 +1588,7 @@ function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[], l
   );
 }
 
-function parseImportedPieces(raw: string) {
+export function parseImportedPieces(raw: string) {
   const parsed = JSON.parse(raw) as {
     board?: { columns?: number; rows?: number };
     instances?: Array<{
@@ -1974,129 +2071,85 @@ export default function BoardDemo() {
             </header>
 
             <div className={styles.boardScroller}>
-              <div
-                className={styles.editorBoard}
-                style={
-                  {
-                    width: columns * BOARD_TILE,
-                    height: rows * BOARD_TILE,
-                    "--board-columns": columns,
-                    "--board-rows": rows,
-                    "--board-tile": `${BOARD_TILE}px`,
-                  } as CSSProperties
-                }
-              >
+              <BoardSurface columns={columns} rows={rows} tileSize={BOARD_TILE} className={styles.editorBoard}>
                 {showConnections || linkDrag ? (
-                  <svg className={styles.linkOverlay} viewBox={`0 0 ${columns * BOARD_TILE} ${rows * BOARD_TILE}`} aria-hidden="true">
-                    {showConnections
-                      ? links.map((link) => {
-                          const start = linkCenters.get(`${link.a.pieceId}:${link.a.kind}:${link.a.partIndex}`);
-                          const end = linkCenters.get(`${link.b.pieceId}:${link.b.kind}:${link.b.partIndex}`);
-
-                          if (!start || !end) {
-                            return null;
-                          }
-
-                          return (
-                            <line
-                              key={`${link.a.pieceId}:${link.a.kind}:${link.a.partIndex}-${link.b.pieceId}:${link.b.kind}:${link.b.partIndex}`}
-                              className={styles.linkLine}
-                              x1={start.x * BOARD_TILE}
-                              y1={start.y * BOARD_TILE}
-                              x2={end.x * BOARD_TILE}
-                              y2={end.y * BOARD_TILE}
-                            />
-                          );
-                        })
-                      : null}
-
-                    {linkDrag ? (
-                      <line
-                        className={styles.linkLineDraft}
-                        x1={(linkCenters.get(`${linkDrag.start.pieceId}:${linkDrag.start.kind}:${linkDrag.start.partIndex}`)?.x ?? 0) * BOARD_TILE}
-                        y1={(linkCenters.get(`${linkDrag.start.pieceId}:${linkDrag.start.kind}:${linkDrag.start.partIndex}`)?.y ?? 0) * BOARD_TILE}
-                        x2={linkDrag.currentPoint.x}
-                        y2={linkDrag.currentPoint.y}
-                      />
-                    ) : null}
-                  </svg>
+                  <BoardLinkOverlay
+                    columns={columns}
+                    rows={rows}
+                    tileSize={BOARD_TILE}
+                    links={showConnections ? links : []}
+                    linkCenters={linkCenters}
+                    className={styles.linkOverlay}
+                    lineClassName={styles.linkLine}
+                    draftLineClassName={styles.linkLineDraft}
+                    draftLine={linkDrag}
+                  />
                 ) : null}
 
-                <div className={styles.boardPieces}>
-                  {pieces.map((placedPiece) => {
+                <PlacedPieceLayer
+                  pieces={pieces}
+                  tileSize={BOARD_TILE}
+                  layerClassName={styles.boardPieces}
+                  pieceClassName={styles.boardPiece}
+                  selectedPieceId={exactSelectedPiece?.id}
+                  selectedPieceClassName={styles.boardPieceSelected}
+                  getBounds={(placedPiece) => catalogData.pieces[placedPiece.pieceKey].bounds}
+                  getTitle={() => "Right-click a tile to remove"}
+                  renderPiece={(placedPiece) => {
                     const piece = catalogData.pieces[placedPiece.pieceKey];
-                    const isSelected = exactSelectedPiece?.id === placedPiece.id;
 
                     return (
-                      <div
-                        key={placedPiece.id}
-                        className={`${styles.boardPiece} ${isSelected ? styles.boardPieceSelected : ""}`}
-                        style={{
-                          left: placedPiece.x * BOARD_TILE,
-                          top: placedPiece.y * BOARD_TILE,
-                          width: piece.bounds.width * BOARD_TILE,
-                          height: piece.bounds.height * BOARD_TILE,
-                        }}
-                        title="Right-click a tile to remove"
-                      >
-                        <PiecePreview
-                          pieceKey={placedPiece.pieceKey}
-                          piece={piece}
-                          state={placedPiece.state}
-                          rotation={placedPiece.rotation}
-                          mirrored={placedPiece.mirrored}
-                          textSize={placedPiece.textSize}
-                          text={placedPiece.text}
-                          tileSize={BOARD_TILE}
-                        />
-                      </div>
+                      <PiecePreview
+                        pieceKey={placedPiece.pieceKey}
+                        piece={piece}
+                        state={placedPiece.state}
+                        rotation={placedPiece.rotation}
+                        mirrored={placedPiece.mirrored}
+                        textSize={placedPiece.textSize}
+                        text={placedPiece.text}
+                        tileSize={BOARD_TILE}
+                      />
                     );
-                  })}
-                </div>
+                  }}
+                />
 
-                <div className={`${styles.tileGrid} ${!showGrid ? styles.tileGridHidden : ""}`}>
-                  {Array.from({ length: rows * columns }, (_, index) => {
-                    const x = index % columns;
-                    const y = Math.floor(index / columns);
-                    const selected = selection.some((cell) => cell.x === x && cell.y === y);
-
-                    return (
-                      <button
-                        key={`${x}-${y}`}
-                        type="button"
-                        className={`${styles.tileButton} ${selected ? styles.tileButtonSelected : ""}`}
-                        onClick={(event) => handleTileClick({ x, y }, event)}
-                        onPointerDown={(event) => {
-                          if (event.button === 2) {
-                            beginLinkDrag({ x, y });
-                          }
-                        }}
-                        onPointerEnter={(event) => {
-                          if ((event.buttons & 2) === 2 && linkDrag) {
-                            updateLinkDrag({ x, y });
-                          }
-                        }}
-                        onPointerUp={(event) => {
-                          if (event.button === 2) {
-                            finishLinkDrag();
-                          }
-                        }}
-                        onContextMenu={(event) => {
-                          event.preventDefault();
-                          if (suppressContextMenuRef.current) {
-                            suppressContextMenuRef.current = false;
-                            return;
-                          }
-                          removePieceAtCell({ x, y });
-                        }}
-                        aria-label={`Tile ${x}, ${y}`}
-                      >
-                        {showTileCoords ? <span className={styles.tileCoord}>{x},{y}</span> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                <BoardTileGrid
+                  columns={columns}
+                  rows={rows}
+                  showGrid={showGrid}
+                  showTileCoords={showTileCoords}
+                  selectedCells={selection}
+                  className={styles.tileGrid}
+                  hiddenClassName={styles.tileGridHidden}
+                  tileClassName={styles.tileButton}
+                  selectedTileClassName={styles.tileButtonSelected}
+                  coordClassName={styles.tileCoord}
+                  onTileClick={handleTileClick}
+                  onTilePointerDown={(cell, event) => {
+                    if (event.button === 2) {
+                      beginLinkDrag(cell);
+                    }
+                  }}
+                  onTilePointerEnter={(cell, event) => {
+                    if ((event.buttons & 2) === 2 && linkDrag) {
+                      updateLinkDrag(cell);
+                    }
+                  }}
+                  onTilePointerUp={(_, event) => {
+                    if (event.button === 2) {
+                      finishLinkDrag();
+                    }
+                  }}
+                  onTileContextMenu={(cell, event) => {
+                    event.preventDefault();
+                    if (suppressContextMenuRef.current) {
+                      suppressContextMenuRef.current = false;
+                      return;
+                    }
+                    removePieceAtCell(cell);
+                  }}
+                />
+              </BoardSurface>
             </div>
           </article>
 

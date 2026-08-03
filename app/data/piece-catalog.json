@@ -1,0 +1,1151 @@
+{
+  "schemaVersion": 1,
+  "coordinateSystem": {
+    "origin": "top-left",
+    "xDirection": "right",
+    "yDirection": "down",
+    "unit": "tiles",
+    "placementMeaning": "The element position is the top-left tile of its bounding box.",
+    "occupiedMeaning": "Each [x, y] entry marks a solid tile inside the element bounds.",
+    "example": {
+      "piece": "switch.extended",
+      "bounds": {
+        "width": 2,
+        "height": 3
+      },
+      "occupied": [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [0, 2]
+      ]
+    }
+  },
+  "pieces": {
+    "board.base": {
+      "asset": "/assets/board/Board_1Square.svg",
+      "category": "board",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "background",
+      "stateModel": {
+        "kind": "static"
+      }
+    },
+    "board.dispatcherBuilding": {
+      "asset": "/assets/board/DispatcherBuilding_1Square.svg",
+      "category": "board",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "decor",
+      "stateModel": {
+        "kind": "static"
+      }
+    },
+    "track.main": {
+      "asset": "/assets/tracks/Track_1Square.svg",
+      "category": "track",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "trackOccupancy",
+        "defaultState": "clear",
+        "states": [
+          {
+            "id": "clear",
+            "label": "Clear"
+          },
+          {
+            "id": "occupied",
+            "label": "Occupied"
+          },
+          {
+            "id": "reserved",
+            "label": "Reserved"
+          }
+        ]
+      }
+    },
+    "track.main.noocp": {
+      "asset": "/assets/tracks/TrackNOOCP_1Square.svg",
+      "category": "track",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "trackOccupancy",
+        "defaultState": "clear",
+        "states": [
+          {
+            "id": "clear",
+            "label": "Clear"
+          },
+          {
+            "id": "occupied",
+            "label": "Occupied"
+          },
+          {
+            "id": "reserved",
+            "label": "Reserved"
+          }
+        ]
+      }
+    },
+    "track.sign": {
+      "asset": "/assets/tracks/TrackSign_1Square.svg",
+      "category": "track",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "trackOccupancy",
+        "defaultState": "clear",
+        "states": [
+          {
+            "id": "clear",
+            "label": "Clear"
+          },
+          {
+            "id": "occupied",
+            "label": "Occupied"
+          },
+          {
+            "id": "reserved",
+            "label": "Reserved"
+          }
+        ]
+      }
+    },
+    "track.sign.noocp": {
+      "asset": "/assets/tracks/TrackSignNOOCP_1Square.svg",
+      "category": "track",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "trackOccupancy",
+        "defaultState": "clear",
+        "states": [
+          {
+            "id": "clear",
+            "label": "Clear"
+          },
+          {
+            "id": "occupied",
+            "label": "Occupied"
+          },
+          {
+            "id": "reserved",
+            "label": "Reserved"
+          }
+        ]
+      }
+    },
+    "switch.single": {
+      "asset": "/assets/switches/SwitchSingle_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "upper.clear",
+            "label": "Upper only clear"
+          },
+          {
+            "id": "upper.reserved",
+            "label": "Upper only reserved"
+          },
+          {
+            "id": "upper.occupied",
+            "label": "Upper only occupied"
+          }
+        ]
+      }
+    },
+    "switch.single.noocp": {
+      "asset": "/assets/switches/SwitchSingleNOOCP_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "upper.clear",
+            "label": "Upper only clear"
+          },
+          {
+            "id": "upper.reserved",
+            "label": "Upper only reserved"
+          },
+          {
+            "id": "upper.occupied",
+            "label": "Upper only occupied"
+          }
+        ]
+      }
+    },
+    "switch.single.mirror": {
+      "asset": "/assets/switches/SwitchSingleMIRROR_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "upper.clear",
+            "label": "Upper only clear"
+          },
+          {
+            "id": "upper.reserved",
+            "label": "Upper only reserved"
+          },
+          {
+            "id": "upper.occupied",
+            "label": "Upper only occupied"
+          }
+        ]
+      }
+    },
+    "switch.single.noocp.mirror": {
+      "asset": "/assets/switches/SwitchSignleNOOCPMIRROR_2Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "upper.clear",
+            "label": "Upper only clear"
+          },
+          {
+            "id": "upper.reserved",
+            "label": "Upper only reserved"
+          },
+          {
+            "id": "upper.occupied",
+            "label": "Upper only occupied"
+          }
+        ]
+      }
+    },
+    "switch.extended": {
+      "asset": "/assets/switches/SwitchExtended_6Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 2,
+        "height": 3
+      },
+      "occupied": [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [0, 2]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "stem.clear",
+            "label": "1 only clear"
+          },
+          {
+            "id": "stem.reserved",
+            "label": "1 only reserved"
+          },
+          {
+            "id": "stem.occupied",
+            "label": "1 only occupied"
+          }
+        ]
+      }
+    },
+    "switch.extended.noocp": {
+      "asset": "/assets/switches/SwitchExtendedNOOCP_6Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 2,
+        "height": 3
+      },
+      "occupied": [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+        [0, 2]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "stem.clear",
+            "label": "1 only clear"
+          },
+          {
+            "id": "stem.reserved",
+            "label": "1 only reserved"
+          },
+          {
+            "id": "stem.occupied",
+            "label": "1 only occupied"
+          }
+        ]
+      }
+    },
+    "switch.extended.mirror": {
+      "asset": "/assets/switches/SwitchExtendedMIRROR_6Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 2,
+        "height": 3
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1],
+        [1, 1],
+        [1, 2]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "stem.clear",
+            "label": "1 only clear"
+          },
+          {
+            "id": "stem.reserved",
+            "label": "1 only reserved"
+          },
+          {
+            "id": "stem.occupied",
+            "label": "1 only occupied"
+          }
+        ]
+      }
+    },
+    "switch.extended.noocp.mirror": {
+      "asset": "/assets/switches/SwitchExtendedNOOCPMIRROR_6Square.svg",
+      "category": "switch",
+      "bounds": {
+        "width": 2,
+        "height": 3
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1],
+        [1, 1],
+        [1, 2]
+      ],
+      "layer": "track",
+      "stateModel": {
+        "kind": "switchPosition",
+        "defaultState": "normal",
+        "states": [
+          {
+            "id": "normal.clear",
+            "label": "1 to 3 clear"
+          },
+          {
+            "id": "normal.reserved",
+            "label": "1 to 3 reserved"
+          },
+          {
+            "id": "normal.occupied",
+            "label": "1 to 3 occupied"
+          },
+          {
+            "id": "reverse.clear",
+            "label": "1 to 2 clear"
+          },
+          {
+            "id": "reverse.reserved",
+            "label": "1 to 2 reserved"
+          },
+          {
+            "id": "reverse.occupied",
+            "label": "1 to 2 occupied"
+          },
+          {
+            "id": "stem.clear",
+            "label": "1 only clear"
+          },
+          {
+            "id": "stem.reserved",
+            "label": "1 only reserved"
+          },
+          {
+            "id": "stem.occupied",
+            "label": "1 only occupied"
+          }
+        ]
+      }
+    },
+    "signal.entry": {
+      "asset": "/assets/signals/Entry_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.entry.noocp": {
+      "asset": "/assets/signals/EntryNOOCP_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.departure2": {
+      "asset": "/assets/signals/Departure2_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.departure2.noocp": {
+      "asset": "/assets/signals/Departure2NOOCP_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.premain": {
+      "asset": "/assets/signals/Premain_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "warning",
+        "states": [
+          {
+            "id": "warning",
+            "label": "Warning"
+          },
+          {
+            "id": "expectStop",
+            "label": "Expect Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.premain.noocp": {
+      "asset": "/assets/signals/PremainNOOCP_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "warning",
+        "states": [
+          {
+            "id": "warning",
+            "label": "Warning"
+          },
+          {
+            "id": "expectStop",
+            "label": "Expect Stop"
+          },
+          {
+            "id": "clear",
+            "label": "Clear"
+          }
+        ]
+      }
+    },
+    "signal.shunt": {
+      "asset": "/assets/signals/Shunt_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "proceed",
+            "label": "Proceed"
+          }
+        ]
+      }
+    },
+    "signal.shunt.noocp": {
+      "asset": "/assets/signals/ShuntNOOCP_1Square.svg",
+      "category": "signal",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "signalAspect",
+        "defaultState": "stop",
+        "states": [
+          {
+            "id": "stop",
+            "label": "Stop"
+          },
+          {
+            "id": "proceed",
+            "label": "Proceed"
+          }
+        ]
+      }
+    },
+    "button.departure": {
+      "asset": "/assets/buttons/DepartureButton_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "momentaryCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "pressed",
+            "label": "Pressed"
+          },
+          {
+            "id": "armed",
+            "label": "Armed"
+          }
+        ]
+      }
+    },
+    "button.shunt": {
+      "asset": "/assets/buttons/ShuntButton_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "momentaryCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "pressed",
+            "label": "Pressed"
+          },
+          {
+            "id": "armed",
+            "label": "Armed"
+          }
+        ]
+      }
+    },
+    "button.shunt.noocp": {
+      "asset": "/assets/buttons/ShuntButtonNOOCP_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "momentaryCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "pressed",
+            "label": "Pressed"
+          },
+          {
+            "id": "armed",
+            "label": "Armed"
+          }
+        ]
+      }
+    },
+    "button.sign": {
+      "asset": "/assets/buttons/SignButton_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "momentaryCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "pressed",
+            "label": "Pressed"
+          },
+          {
+            "id": "armed",
+            "label": "Armed"
+          }
+        ]
+      }
+    },
+    "button.sign.light": {
+      "asset": "/assets/buttons/SignButtonLight_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "indicator",
+        "defaultState": "dark",
+        "states": [
+          {
+            "id": "dark",
+            "label": "Dark"
+          },
+          {
+            "id": "lit",
+            "label": "Lit"
+          },
+          {
+            "id": "flashing",
+            "label": "Flashing"
+          }
+        ]
+      }
+    },
+    "button.sign.sealedCounter": {
+      "asset": "/assets/buttons/SignButtonSealedCounter_1Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "sealedCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "sealed",
+            "label": "Sealed"
+          },
+          {
+            "id": "released",
+            "label": "Released"
+          }
+        ]
+      }
+    },
+    "button.switchSelector": {
+      "asset": "/assets/buttons/SwitchButton_2Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 1,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [0, 1]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "threePositionSelector",
+        "defaultState": "center",
+        "states": [
+          {
+            "id": "left",
+            "label": "Switched Left"
+          },
+          {
+            "id": "center",
+            "label": "Neutral"
+          },
+          {
+            "id": "right",
+            "label": "Switched Right"
+          }
+        ]
+      }
+    },
+    "button.lineblock": {
+      "asset": "/assets/buttons/Lineblock_6Square.svg",
+      "category": "button",
+      "bounds": {
+        "width": 3,
+        "height": 2
+      },
+      "occupied": [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 1],
+        [1, 1],
+        [2, 1]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "lineblockPanel",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "left.requesting",
+            "label": "Left requesting"
+          },
+          {
+            "id": "left.granted",
+            "label": "Left granted"
+          },
+          {
+            "id": "left.blocked",
+            "label": "Left blocked"
+          },
+          {
+            "id": "right.requesting",
+            "label": "Right requesting"
+          },
+          {
+            "id": "right.granted",
+            "label": "Right granted"
+          },
+          {
+            "id": "right.blocked",
+            "label": "Right blocked"
+          }
+        ],
+        "notes": "This is a first-pass operational model. If the lamps represent a stricter block instrument state machine, replace these states with the real railway sequence."
+      }
+    },
+    "button.shuntBufferSignal": {
+      "asset": "/assets/special/ShuntButtonSignalBUFFER_1Square.svg",
+      "category": "special",
+      "bounds": {
+        "width": 1,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0]
+      ],
+      "layer": "control",
+      "stateModel": {
+        "kind": "momentaryCommand",
+        "defaultState": "idle",
+        "states": [
+          {
+            "id": "idle",
+            "label": "Idle"
+          },
+          {
+            "id": "pressed",
+            "label": "Pressed"
+          },
+          {
+            "id": "armed",
+            "label": "Armed"
+          }
+        ]
+      }
+    },
+    "sign.fourLabel": {
+      "asset": "/assets/signs/4Sign_6Square.svg",
+      "category": "sign",
+      "bounds": {
+        "width": 4,
+        "height": 1
+      },
+      "occupied": [
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [3, 0]
+      ],
+      "layer": "label",
+      "stateModel": {
+        "kind": "static"
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@ type PieceCatalog = typeof catalogData;
 export type PieceKey = keyof PieceCatalog["pieces"];
 export type PieceDefinition = PieceCatalog["pieces"][PieceKey];
 export type PieceText = string | string[];
+export type PieceTextSize = number[];
 
 type OverlayLamp = {
   x: number;
@@ -55,6 +56,7 @@ type GridCell = {
 };
 
 export type PieceRotation = 0 | 180;
+export type PieceMirror = boolean;
 
 type PlacedPiece = {
   id: string;
@@ -63,7 +65,9 @@ type PlacedPiece = {
   y: number;
   state: string;
   rotation: PieceRotation;
+  mirrored: PieceMirror;
   text?: PieceText;
+  textSize?: PieceTextSize;
 };
 
 const INITIAL_COLUMNS = 24;
@@ -271,9 +275,9 @@ const CONTROL_LAMP_LAYOUTS: Partial<Record<PieceKey, Record<string, OverlayLamp[
     armed: [{ x: 60, y: 37.5, r: 4.94, color: "#63d29b" }],
   },
   "button.sign": {
-    idle: [{ x: 37.5, y: 51.35, r: 6.73, color: "#636a6e" }],
-    pressed: [{ x: 37.5, y: 51.35, r: 6.73, color: "#4ea7ff" }],
-    armed: [{ x: 37.5, y: 51.35, r: 6.73, color: "#63d29b" }],
+    idle: [],
+    pressed: [],
+    armed: [],
   },
   "button.sign.light": {
     dark: [{ x: 37.5, y: 51.35, r: 6.73, color: "#636a6e" }],
@@ -655,6 +659,28 @@ export function normalizeTextValues(text: PieceText | undefined, layouts: TextLa
   return layouts.map((layout, index) => values[index] ?? (layouts.length === 1 ? values[0] ?? "" : ""));
 }
 
+function getComputedTextFontSize(layout: TextLayout, value: string, override?: number) {
+  if (override && override > 0) {
+    return override;
+  }
+
+  if (layout.fontSize) {
+    return layout.fontSize;
+  }
+
+  const lines = value.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const longestLine = lines.reduce((max, line) => Math.max(max, line.length), 0) || Math.max(1, value.length);
+  const lineCount = Math.max(1, lines.length);
+
+  return Math.min(layout.height * (0.84 / lineCount), layout.width / Math.max(1.4, longestLine * 0.75));
+}
+
+export function normalizeTextSizes(textSize: PieceTextSize | undefined, layouts: TextLayout[], text: PieceText | undefined) {
+  const sizes = Array.isArray(textSize) ? textSize : [];
+  const values = normalizeTextValues(text, layouts);
+  return layouts.map((layout, index) => getComputedTextFontSize(layout, values[index] ?? "", sizes[index]));
+}
+
 export function getDefaultTextValues(pieceKey: PieceKey, layouts: TextLayout[]) {
   if (pieceKey === "button.lineblock") {
     return ["A", "B", "C", "ODHL", "ODHL"];
@@ -683,14 +709,6 @@ export function getInitialTextForPiece(pieceKey: PieceKey) {
   return layouts.length === 1 ? defaults[0] : defaults;
 }
 
-function getTextFontSize(layout: TextLayout, value: string) {
-  if (layout.fontSize) {
-    return layout.fontSize;
-  }
-
-  return Math.min(layout.height * 0.82, layout.width / Math.max(1.4, value.length * 0.75));
-}
-
 function rotatePoint180(x: number, y: number, width: number, height: number) {
   return {
     x: width - x,
@@ -698,11 +716,72 @@ function rotatePoint180(x: number, y: number, width: number, height: number) {
   };
 }
 
+function mirrorPointX(x: number, y: number, width: number) {
+  return {
+    x: width - x,
+    y,
+  };
+}
+
+function transformOverlayPoint(x: number, y: number, width: number, height: number, rotation: PieceRotation, mirrored: PieceMirror) {
+  const rotated = rotation === 180 ? rotatePoint180(x, y, width, height) : { x, y };
+  return mirrored ? mirrorPointX(rotated.x, rotated.y, width) : rotated;
+}
+
+function buildSvgTransform(width: number, height: number, rotation: PieceRotation, mirrored: PieceMirror) {
+  const transforms: string[] = [];
+
+  if (rotation === 180) {
+    transforms.push(`rotate(180 ${width / 2} ${height / 2})`);
+  }
+
+  if (mirrored) {
+    transforms.push(`translate(${width} 0) scale(-1 1)`);
+  }
+
+  return transforms.length > 0 ? transforms.join(" ") : undefined;
+}
+
+function buildCssTransform(rotation: PieceRotation, mirrored: PieceMirror) {
+  const transforms: string[] = [];
+
+  if (rotation === 180) {
+    transforms.push("rotate(180deg)");
+  }
+
+  if (mirrored) {
+    transforms.push("scaleX(-1)");
+  }
+
+  return transforms.length > 0 ? transforms.join(" ") : undefined;
+}
+
 function shouldPreserveTextCase(pieceKey: PieceKey, index: number) {
   return pieceKey === "button.sign.sealedCounter" && index === 0;
 }
 
-function renderTextOverlays(pieceKey: PieceKey, text: PieceText | undefined, rotation: PieceRotation, width: number, height: number) {
+function isDefaultTextSize(pieceKey: PieceKey, text: PieceText | undefined, textSize: PieceTextSize | undefined) {
+  const layouts = getTextLayouts(pieceKey);
+  if (layouts.length === 0 || !textSize || textSize.length === 0) {
+    return true;
+  }
+
+  const values = normalizeTextValues(text, layouts);
+  return textSize.every((size, index) => {
+    const expected = getComputedTextFontSize(layouts[index], values[index] ?? "");
+    return Math.abs(size - expected) < 0.05;
+  });
+}
+
+function renderTextOverlays(
+  pieceKey: PieceKey,
+  text: PieceText | undefined,
+  textSize: PieceTextSize | undefined,
+  rotation: PieceRotation,
+  mirrored: PieceMirror,
+  width: number,
+  height: number,
+) {
   const layouts = getTextLayouts(pieceKey);
 
   if (layouts.length === 0) {
@@ -710,6 +789,7 @@ function renderTextOverlays(pieceKey: PieceKey, text: PieceText | undefined, rot
   }
 
   const values = normalizeTextValues(text, layouts);
+  const sizes = normalizeTextSizes(textSize, layouts, text);
 
   return layouts.flatMap((layout, index) => {
     const value = values[index]?.trim();
@@ -720,34 +800,52 @@ function renderTextOverlays(pieceKey: PieceKey, text: PieceText | undefined, rot
 
     const cx = layout.x + layout.width / 2;
     const cy = layout.y + layout.height / 2;
-    const point = rotation === 180 ? rotatePoint180(cx, cy, width, height) : { x: cx, y: cy };
+    const point = transformOverlayPoint(cx, cy, width, height, rotation, mirrored);
+    const textRotation = mirrored && layout.rotate ? -layout.rotate : layout.rotate;
+    const fontSize = sizes[index];
+    const lines = value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+    const renderedLines = lines.length > 0 ? lines : [value];
+    const lineHeight = fontSize * 1.04;
+    const startY = point.y - ((renderedLines.length - 1) * lineHeight) / 2;
 
     return (
       <text
         key={`text-${layout.label}-${index}`}
         x={point.x}
-        y={point.y}
+        y={startY}
         textAnchor="middle"
         dominantBaseline="middle"
-        transform={layout.rotate ? `rotate(${layout.rotate} ${point.x} ${point.y})` : undefined}
+        transform={textRotation ? `rotate(${textRotation} ${point.x} ${point.y})` : undefined}
         fill={layout.fill ?? "#27282b"}
-        fontSize={getTextFontSize(layout, value)}
+        fontSize={fontSize}
         fontFamily={layout.fontFamily ?? "Consolas, 'Courier New', monospace"}
         letterSpacing={layout.letterSpacing ?? 0.5}
       >
-        {value}
+        {renderedLines.map((line, lineIndex) => (
+          <tspan key={`${layout.label}-${index}-${lineIndex}`} x={point.x} dy={lineIndex === 0 ? 0 : lineHeight}>
+            {line}
+          </tspan>
+        ))}
       </text>
     );
   });
 }
 
-function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string, rotation: PieceRotation, text?: PieceText) {
+function renderOverlay(
+  pieceKey: PieceKey,
+  piece: PieceDefinition,
+  state: string,
+  rotation: PieceRotation,
+  mirrored: PieceMirror,
+  textSize: PieceTextSize | undefined,
+  text?: PieceText,
+) {
   const kind = piece.stateModel.kind;
   const width = piece.bounds.width * SVG_TILE_UNIT;
   const height = piece.bounds.height * SVG_TILE_UNIT;
   const nodes: ReactNode[] = [];
   const textNodes: ReactNode[] = [];
-  const rotateTransform = rotation === 180 ? `rotate(180 ${width / 2} ${height / 2})` : undefined;
+  const overlayTransform = buildSvgTransform(width, height, rotation, mirrored);
   const suppressStates = suppressStateEditing(pieceKey, piece);
 
   if (kind === "trackOccupancy" && !suppressStates && state !== "clear") {
@@ -965,7 +1063,7 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
     nodes.push(<circle key="shunt-buffer-signal" cx={7.67} cy={15} r={4.78} fill="#f7f8fb" />);
   }
 
-  textNodes.push(...renderTextOverlays(pieceKey, text, rotation, width, height));
+  textNodes.push(...renderTextOverlays(pieceKey, text, textSize, rotation, mirrored, width, height));
 
   if (nodes.length === 0 && textNodes.length === 0) {
     return null;
@@ -973,7 +1071,7 @@ function renderOverlay(pieceKey: PieceKey, piece: PieceDefinition, state: string
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className={styles.overlaySvg} aria-hidden="true">
-      {nodes.length > 0 ? <g transform={rotateTransform}>{nodes}</g> : null}
+      {nodes.length > 0 ? <g transform={overlayTransform}>{nodes}</g> : null}
       {textNodes}
     </svg>
   );
@@ -984,6 +1082,8 @@ export function PiecePreview({
   piece,
   state,
   rotation = 0,
+  mirrored = false,
+  textSize,
   text,
   tileSize,
 }: {
@@ -991,12 +1091,14 @@ export function PiecePreview({
   piece: PieceDefinition;
   state: string;
   rotation?: PieceRotation;
+  mirrored?: PieceMirror;
+  textSize?: PieceTextSize;
   text?: PieceText;
   tileSize: number;
 }) {
   const width = piece.bounds.width * tileSize;
   const height = piece.bounds.height * tileSize;
-  const assetTransform = rotation === 180 ? "rotate(180deg)" : undefined;
+  const assetTransform = buildCssTransform(rotation, mirrored);
 
   return (
     <div className={styles.piecePreview} style={{ width, height }}>
@@ -1010,7 +1112,7 @@ export function PiecePreview({
         style={{ transform: assetTransform }}
         draggable="false"
       />
-      {renderOverlay(pieceKey, piece, state, rotation, text)}
+      {renderOverlay(pieceKey, piece, state, rotation, mirrored, textSize, text)}
     </div>
   );
 }
@@ -1139,7 +1241,9 @@ function createPlacedPiece(pieceKey: PieceKey, x: number, y: number): PlacedPiec
     y,
     state: getDefaultState(piece),
     rotation: 0,
+    mirrored: false,
     text: getInitialTextForPiece(pieceKey),
+    textSize: undefined,
   };
 }
 
@@ -1178,8 +1282,16 @@ function buildExportJson(columns: number, rows: number, pieces: PlacedPiece[]) {
         instance.rotation = placedPiece.rotation;
       }
 
+      if (placedPiece.mirrored) {
+        instance.mirrored = true;
+      }
+
       if (serializedText !== undefined && !isDefaultText(placedPiece.pieceKey, serializedText)) {
         instance.text = serializedText;
+      }
+
+      if (placedPiece.textSize && !isDefaultTextSize(placedPiece.pieceKey, placedPiece.text, placedPiece.textSize)) {
+        instance.textSize = placedPiece.textSize.map((size) => Number(size.toFixed(2)));
       }
 
       return instance;
@@ -1216,7 +1328,9 @@ function parseImportedPieces(raw: string) {
       y?: number;
       state?: string;
       rotation?: number;
+      mirrored?: boolean;
       text?: PieceText;
+      textSize?: number[];
     }>;
   };
 
@@ -1245,7 +1359,11 @@ function parseImportedPieces(raw: string) {
       y,
       state: typeof instance.state === "string" ? instance.state : getDefaultState(definition),
       rotation: instance.rotation === 180 ? 180 : 0,
+      mirrored: instance.mirrored === true,
       text: instance.text,
+      textSize: Array.isArray(instance.textSize)
+        ? instance.textSize.map((size) => Math.max(4, Math.min(72, Number(size) || 0)))
+        : undefined,
     });
   }
 
@@ -1393,6 +1511,30 @@ export default function BoardDemo() {
           ? {
               ...placedPiece,
               text: nextText,
+              textSize: placedPiece.textSize,
+            }
+          : placedPiece,
+      ),
+    );
+  }
+
+  function updateSelectedPieceTextSize(index: number, value: number) {
+    if (!exactSelectedPiece) {
+      return;
+    }
+
+    const layouts = getTextLayouts(exactSelectedPiece.pieceKey);
+    const normalizedSizes = normalizeTextSizes(exactSelectedPiece.textSize, layouts, exactSelectedPiece.text);
+    const nextSizes = [...normalizedSizes];
+    nextSizes[index] = Math.max(4, Math.min(72, value || normalizedSizes[index]));
+    const clearedSizes = isDefaultTextSize(exactSelectedPiece.pieceKey, exactSelectedPiece.text, nextSizes) ? undefined : nextSizes;
+
+    setPieces((current) =>
+      current.map((placedPiece) =>
+        placedPiece.id === exactSelectedPiece.id
+          ? {
+              ...placedPiece,
+              textSize: clearedSizes,
             }
           : placedPiece,
       ),
@@ -1410,6 +1552,23 @@ export default function BoardDemo() {
           ? {
               ...placedPiece,
               rotation,
+            }
+          : placedPiece,
+      ),
+    );
+  }
+
+  function updateSelectedPieceMirroring(mirrored: PieceMirror) {
+    if (!exactSelectedPiece) {
+      return;
+    }
+
+    setPieces((current) =>
+      current.map((placedPiece) =>
+        placedPiece.id === exactSelectedPiece.id
+          ? {
+              ...placedPiece,
+              mirrored,
             }
           : placedPiece,
       ),
@@ -1441,6 +1600,9 @@ export default function BoardDemo() {
   const selectedPieceTextLayouts = exactSelectedPiece ? getTextLayouts(exactSelectedPiece.pieceKey) : [];
   const selectedPieceTextValues = exactSelectedPiece
     ? normalizeTextValues(exactSelectedPiece.text, selectedPieceTextLayouts)
+    : [];
+  const selectedPieceTextSizes = exactSelectedPiece
+    ? normalizeTextSizes(exactSelectedPiece.textSize, selectedPieceTextLayouts, exactSelectedPiece.text)
     : [];
 
   return (
@@ -1530,6 +1692,8 @@ export default function BoardDemo() {
                           piece={piece}
                           state={placedPiece.state}
                           rotation={placedPiece.rotation}
+                          mirrored={placedPiece.mirrored}
+                          textSize={placedPiece.textSize}
                           text={placedPiece.text}
                           tileSize={BOARD_TILE}
                         />
@@ -1600,6 +1764,8 @@ export default function BoardDemo() {
                         piece={piece}
                         state={getDefaultState(piece)}
                         rotation={0}
+                        mirrored={false}
+                        textSize={undefined}
                         text={getInitialTextForPiece(pieceKey)}
                         tileSize={PREVIEW_TILE}
                       />
@@ -1641,6 +1807,17 @@ export default function BoardDemo() {
                     </select>
                   </label>
 
+                  <label className={styles.field}>
+                    <select
+                      value={exactSelectedPiece.mirrored ? "yes" : "no"}
+                      onChange={(event) => updateSelectedPieceMirroring(event.target.value === "yes")}
+                      aria-label="Mirrored"
+                    >
+                      <option value="no">Normal</option>
+                      <option value="yes">Mirrored</option>
+                    </select>
+                  </label>
+
                   {getStateOptions(selectedPieceDefinition, exactSelectedPiece.pieceKey).length > 0 ? (
                     <label className={styles.field}>
                       <select value={exactSelectedPiece.state} onChange={(event) => updateSelectedPieceState(event.target.value)} aria-label="State">
@@ -1654,16 +1831,36 @@ export default function BoardDemo() {
                   ) : null}
 
                   {selectedPieceTextLayouts.map((layout, index) => (
-                    <label key={`${layout.label}-${index}`} className={styles.field}>
-                      <input
-                        type="text"
-                        maxLength={layout.maxLength ?? 24}
-                        value={selectedPieceTextValues[index] ?? ""}
-                        onChange={(event) => updateSelectedPieceText(index, event.target.value)}
-                        placeholder={layout.label}
-                        aria-label={layout.label}
-                      />
-                    </label>
+                    <div key={`${layout.label}-${index}`} className={styles.textFieldStack}>
+                      <label className={styles.field}>
+                        <textarea
+                          rows={2}
+                          maxLength={layout.maxLength ?? 24}
+                          value={selectedPieceTextValues[index] ?? ""}
+                          onChange={(event) => updateSelectedPieceText(index, event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" && !event.shiftKey) {
+                              event.preventDefault();
+                              (event.currentTarget as HTMLTextAreaElement).blur();
+                            }
+                          }}
+                          placeholder={layout.label}
+                          aria-label={layout.label}
+                        />
+                      </label>
+                      <label className={styles.field}>
+                        <input
+                          type="number"
+                          min={4}
+                          max={72}
+                          step={0.5}
+                          value={selectedPieceTextSizes[index] ?? layout.fontSize ?? 12}
+                          onChange={(event) => updateSelectedPieceTextSize(index, Number(event.target.value))}
+                          placeholder="Size"
+                          aria-label={`${layout.label} size`}
+                        />
+                      </label>
+                    </div>
                   ))}
                 </div>
               )}

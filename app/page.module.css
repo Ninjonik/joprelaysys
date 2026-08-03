@@ -325,6 +325,7 @@
 }
 
 .field input,
+.field textarea,
 .field select,
 .exportBox {
   width: 100%;
@@ -335,14 +336,33 @@
 }
 
 .field input,
+.field textarea,
 .field select {
-  height: 38px;
   padding: 0 12px;
 }
 
-.field input {
+.field input,
+.field select {
+  height: 38px;
+}
+
+.field input,
+.field textarea {
   font-family: Consolas, "Courier New", monospace;
   text-transform: uppercase;
+}
+
+.field textarea {
+  min-height: 56px;
+  padding: 9px 12px;
+  resize: none;
+  line-height: 1.2;
+  overflow-y: auto;
+}
+
+.textFieldStack {
+  display: grid;
+  gap: 6px;
 }
 
 .actionRow {

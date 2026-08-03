@@ -1833,7 +1833,7 @@ export default function BoardDemo() {
                       <label className={styles.field}>
                         <textarea
                           rows={2}
-                          maxLength={getTextMaxLength(layout)}
+                          maxLength={getTextMaxLength()}
                           value={selectedPieceTextValues[index] ?? ""}
                           onChange={(event) => updateSelectedPieceText(index, event.target.value)}
                           placeholder={layout.label}

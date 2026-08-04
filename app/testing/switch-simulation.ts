@@ -1,7 +1,7 @@
 import type { PieceStateUpdate, RuntimeOutcome, RuntimePiece, RuntimeSnapshot, SelectorDirection } from "./runtime-types";
 import { getLinkedSwitchTargets, getPiece } from "./runtime-snapshot";
 
-const SWITCH_TRAVEL_MS = 1200;
+const SWITCH_TRAVEL_MS = 5000;
 
 function isMovingSwitchState(state: string) {
   return state === "moving" || state.includes(".moving");

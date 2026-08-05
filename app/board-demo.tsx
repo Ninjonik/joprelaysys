@@ -76,7 +76,7 @@ export type PlacedPiece = {
   textSize?: PieceTextSize;
 };
 
-type LinkEndpointKind = "selector" | "switchPart";
+type LinkEndpointKind = "selector" | "switchPart" | "lineblock" | "track";
 
 type LinkEndpoint = {
   pieceId: string;
@@ -1419,13 +1419,21 @@ function normalizeLink(a: LinkEndpoint, b: LinkEndpoint): PieceLink {
   return first <= second ? { a, b } : { a: b, b: a };
 }
 
+function isLinkEndpointKind(value: unknown): value is LinkEndpointKind {
+  return value === "selector" || value === "switchPart" || value === "lineblock" || value === "track";
+}
+
 function cleanupLinks(links: PieceLink[], pieces: PlacedPiece[]) {
   const validAreas = pieces.flatMap(getLinkableAreasForPiece);
+  const pieceIds = new Set(pieces.map((piece) => piece.id));
+
+  function hasEndpoint(endpoint: LinkEndpoint) {
+    return validAreas.some((area) => isSameLinkEndpoint(area.endpoint, endpoint))
+      || ((endpoint.kind === "lineblock" || endpoint.kind === "track") && pieceIds.has(endpoint.pieceId));
+  }
 
   return links.filter((link) => {
-    const hasA = validAreas.some((area) => isSameLinkEndpoint(area.endpoint, link.a));
-    const hasB = validAreas.some((area) => isSameLinkEndpoint(area.endpoint, link.b));
-    return hasA && hasB && isLinkPairValid(link.a, link.b);
+    return hasEndpoint(link.a) && hasEndpoint(link.b) && isLinkPairValid(link.a, link.b);
   });
 }
 
@@ -1651,8 +1659,8 @@ export function parseImportedPieces(raw: string) {
           if (
             !link?.a?.pieceId ||
             !link?.b?.pieceId ||
-            (link.a.kind !== "selector" && link.a.kind !== "switchPart") ||
-            (link.b.kind !== "selector" && link.b.kind !== "switchPart")
+            !isLinkEndpointKind(link.a.kind) ||
+            !isLinkEndpointKind(link.b.kind)
           ) {
             return null;
           }

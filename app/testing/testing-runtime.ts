@@ -1,4 +1,7 @@
-import { catalog, type PieceLink, type PlacedPiece } from "../board-demo";
+import catalogData from "../data/piece-catalog.json";
+import type { PieceLink, PlacedPiece } from "../board-demo";
+
+const BOARD_TILE = 42;
 
 type CellPieceId = string | null;
 
@@ -18,16 +21,12 @@ export type TestingBoardState = {
   links: PieceLink[];
 };
 
-export type TestingBoardRecord = {
-  columns: number;
-  rows: number;
-  pieces: PlacedPiece[];
-  links: PieceLink[];
+export type TestingBoardRecord = TestingBoardState & {
   revision: number;
   updatedAt: string;
 };
 
-export type TestingBoardRecordInput = Pick<TestingBoardRecord, "columns" | "rows" | "pieces" | "links">;
+export type TestingBoardRecordInput = TestingBoardState;
 
 export type PieceStateUpdate = {
   pieceId: string;
@@ -136,7 +135,7 @@ export function createTestingBoardState({
     piecesById[piece.id] = piece;
     pieceIds.push(piece.id);
 
-    const bounds = catalog.pieces[piece.pieceKey].bounds;
+    const bounds = catalogData.pieces[piece.pieceKey].bounds;
 
     for (let dy = 0; dy < bounds.height; dy += 1) {
       for (let dx = 0; dx < bounds.width; dx += 1) {
@@ -162,13 +161,7 @@ export function createTestingBoardState({
 }
 
 export function createTestingBoardStateFromRecord(record: TestingBoardRecord, tileSize: number) {
-  return createTestingBoardState({
-    columns: record.columns,
-    rows: record.rows,
-    tileSize,
-    pieces: record.pieces,
-    links: record.links,
-  });
+  return { ...record, tileSize };
 }
 
 export function getBoardPieces(board: TestingBoardState) {
@@ -177,21 +170,29 @@ export function getBoardPieces(board: TestingBoardState) {
 
 export function createEmptyTestingBoardRecord(): TestingBoardRecord {
   return {
-    columns: 24,
-    rows: 14,
-    pieces: [],
-    links: [],
+    ...createTestingBoardState({
+      columns: 24,
+      rows: 14,
+      tileSize: BOARD_TILE,
+      pieces: [],
+      links: [],
+    }),
     revision: 0,
     updatedAt: new Date().toISOString(),
   };
 }
 
 export function sanitizeTestingBoardRecordInput(input: TestingBoardRecordInput, revision: number): TestingBoardRecord {
+  const pieces = getBoardPieces(input);
+
   return {
-    columns: Number.isFinite(input.columns) ? input.columns : 24,
-    rows: Number.isFinite(input.rows) ? input.rows : 14,
-    pieces: Array.isArray(input.pieces) ? input.pieces : [],
-    links: Array.isArray(input.links) ? input.links : [],
+    ...createTestingBoardState({
+      columns: Number.isFinite(input.columns) ? input.columns : 24,
+      rows: Number.isFinite(input.rows) ? input.rows : 14,
+      tileSize: Number.isFinite(input.tileSize) ? input.tileSize : BOARD_TILE,
+      pieces,
+      links: Array.isArray(input.links) ? input.links : [],
+    }),
     revision,
     updatedAt: new Date().toISOString(),
   };
@@ -204,22 +205,23 @@ export function applyBoardRecordStateUpdates(record: TestingBoardRecord, updates
 
   const updateMap = new Map(updates.map((update) => [update.pieceId, update.state]));
   let changed = false;
+  const piecesById = { ...record.piecesById };
 
-  const pieces = record.pieces.map((piece) => {
-    const nextState = updateMap.get(piece.id);
+  for (const [pieceId, piece] of Object.entries(piecesById)) {
+    const nextState = updateMap.get(pieceId);
 
     if (!nextState || nextState === piece.state) {
-      return piece;
+      continue;
     }
 
+    piecesById[pieceId] = { ...piece, state: nextState };
     changed = true;
-    return { ...piece, state: nextState };
-  });
+  }
 
   return changed
     ? {
         ...record,
-        pieces,
+        piecesById,
         revision: record.revision + 1,
         updatedAt: new Date().toISOString(),
       }
@@ -268,6 +270,20 @@ function getLinkedSwitchTargets(board: TestingBoardState, selectorId: string): S
 
 function isMovingSwitchState(state: string) {
   return state === "moving" || state.includes(".moving");
+}
+
+function isMovingSwitchTarget(piece: PlacedPiece, partIndex: number) {
+  if (!isMovingSwitchState(piece.state)) {
+    return false;
+  }
+
+  if (piece.pieceKey.startsWith("switch.crossover")) {
+    const current = parseCrossoverState(piece.state);
+    const section = partIndex === 0 ? current.top : current.bottom;
+    return section.aspect === "moving";
+  }
+
+  return piece.state === "moving" || piece.state.includes(`.moving.part${partIndex}`);
 }
 
 function parseCrossoverState(rawState: string) {
@@ -344,7 +360,7 @@ export function isSelectorLocked(board: TestingBoardState, selectorId: string) {
 
   return getLinkedSwitchTargets(board, selectorId).some((target) => {
     const piece = getPiece(board, target.pieceId);
-    return piece ? isMovingSwitchState(piece.state) : false;
+    return piece ? isMovingSwitchTarget(piece, target.partIndex) : false;
   });
 }
 

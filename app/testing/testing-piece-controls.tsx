@@ -63,7 +63,7 @@ function getSelectorControls({ piece, runAction, selectorLocked }: ControlContex
     {
       title: selectorLocked ? "Switch is moving" : "Left click sets the linked switch to normal. Right click sets it to reverse.",
       disabled: selectorLocked,
-      className: selectorLocked ? "cursor-default" : "cursor-pointer",
+      className: selectorLocked ? "pointer-events-none cursor-default" : "cursor-pointer",
       onClick: () => {
         if (!selectorLocked) {
           runAction({ type: "selector", pieceId: piece.id, direction: "left" });
@@ -208,6 +208,7 @@ export function TestingPieceControls({ piece, tileSize }: Props) {
       style={control.area ? (transformRect(control.area, width, height, piece) as CSSProperties) : undefined}
       title={control.title}
       aria-disabled={control.disabled}
+      disabled={control.disabled}
       onClick={control.onClick}
       onContextMenu={control.onContextMenu}
     />

@@ -5,17 +5,21 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { BOARD_TILE, INITIAL_COLUMNS, INITIAL_ROWS, parseImportedPieces } from "../board-demo";
 import {
   applyBoardStateUpdates,
-  createTestingBoardStateFromRecord,
   createTestingBoardState,
+  createTestingBoardStateFromRecord,
   getBoardPieces,
   planRuntimeAction,
   type PieceStateUpdate,
   type TestingAction,
   type TestingBoardRecord,
-  type TestingBoardRecordInput,
   type TestingBoardState,
   type TestingRuntimeOutcome,
 } from "./testing-runtime";
+import {
+  readTestingBoardAction,
+  replaceTestingBoardAction,
+  updateTestingBoardStatesAction,
+} from "./testing-board-actions";
 
 type TestingBoardContextValue = {
   board: TestingBoardState;
@@ -28,60 +32,12 @@ type TestingBoardContextValue = {
 
 const TestingBoardContext = createContext<TestingBoardContextValue | null>(null);
 
-async function readBoardRecord() {
-  const response = await fetch("/api/testing-board", { cache: "no-store" });
-
-  if (!response.ok) {
-    throw new Error("Failed to load testing board");
-  }
-
-  return (await response.json()) as TestingBoardRecord;
-}
-
-async function resetBoardRecord() {
-  const response = await fetch("/api/testing-board", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "reset" }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to reset testing board");
-  }
-
-  return (await response.json()) as TestingBoardRecord;
-}
-
-async function replaceBoardRecord(board: TestingBoardRecordInput) {
-  const response = await fetch("/api/testing-board", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "replace", board }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to replace testing board");
-  }
-
-  return (await response.json()) as TestingBoardRecord;
-}
-
 async function publishStateUpdates(updates: PieceStateUpdate[]) {
   if (updates.length === 0) {
     return null;
   }
 
-  const response = await fetch("/api/testing-board", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "stateUpdates", updates }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to update testing board");
-  }
-
-  return (await response.json()) as TestingBoardRecord;
+  return updateTestingBoardStatesAction(updates);
 }
 
 function clearTimers(timers: Set<number>) {
@@ -173,7 +129,7 @@ function useBoardState() {
     let cancelled = false;
 
     async function startSync() {
-      const record = await resetBoardRecord();
+      const record = await readTestingBoardAction();
 
       if (cancelled) {
         return;
@@ -193,7 +149,7 @@ function useBoardState() {
 
       eventSource.addEventListener("error", () => {
         void (async () => {
-          const nextRecord = await readBoardRecord();
+          const nextRecord = await readTestingBoardAction();
 
           if (nextRecord.revision !== remoteRevisionRef.current) {
             replaceBoardFromRecord(nextRecord);
@@ -223,12 +179,14 @@ function useBoardState() {
     clearTimers(timersRef.current);
 
     const imported = parseImportedPieces(await file.text());
-    const record = await replaceBoardRecord({
+    const nextBoard = createTestingBoardState({
       columns: imported.columns,
       rows: imported.rows,
+      tileSize: boardRef.current.tileSize,
       pieces: imported.pieces,
       links: imported.links,
     });
+    const record = await replaceTestingBoardAction(nextBoard);
     replaceBoardFromRecord(record);
 
     event.target.value = "";

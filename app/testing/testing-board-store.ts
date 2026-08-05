@@ -1,8 +1,10 @@
 import { getMongoDb } from "@/lib/mongodb";
 import {
   applyBoardRecordStateUpdates,
+  createTestingBoardState,
   createEmptyTestingBoardRecord,
   sanitizeTestingBoardRecordInput,
+  type TestingBoardState,
   type PieceStateUpdate,
   type TestingBoardRecord,
   type TestingBoardRecordInput,
@@ -13,6 +15,15 @@ const RECORD_ID = "singleton";
 
 type StoredTestingBoardRecord = TestingBoardRecord & {
   _id: string;
+};
+
+type LegacyTestingBoardRecord = {
+  columns?: number;
+  rows?: number;
+  pieces?: Parameters<typeof createTestingBoardState>[0]["pieces"];
+  links?: TestingBoardRecord["links"];
+  revision?: number;
+  updatedAt?: string;
 };
 
 export async function getTestingBoardCollection() {
@@ -27,22 +38,25 @@ export async function readTestingBoardRecord() {
   if (existing) {
     const { _id, ...record } = existing;
     void _id;
-    return record;
+    const alreadyStateShaped = isTestingBoardState(record);
+    const normalized = normalizeStoredTestingBoardRecord(record);
+
+    if (!alreadyStateShaped) {
+      await writeTestingBoardRecord(normalized);
+    }
+
+    return normalized;
   }
 
   const fresh = createEmptyTestingBoardRecord();
-  await collection.updateOne({ _id: RECORD_ID }, { $set: fresh }, { upsert: true });
+  await collection.replaceOne({ _id: RECORD_ID }, fresh, { upsert: true });
   return fresh;
 }
 
 export async function writeTestingBoardRecord(record: TestingBoardRecord) {
   const collection = await getTestingBoardCollection();
-  await collection.updateOne({ _id: RECORD_ID }, { $set: record }, { upsert: true });
+  await collection.replaceOne({ _id: RECORD_ID }, record, { upsert: true });
   return record;
-}
-
-export async function resetTestingBoardRecord() {
-  return writeTestingBoardRecord(createEmptyTestingBoardRecord());
 }
 
 export async function replaceTestingBoardRecord(board: TestingBoardRecordInput) {
@@ -77,4 +91,32 @@ export async function watchTestingBoardRecord() {
     ],
     { fullDocument: "updateLookup" },
   );
+}
+
+function isTestingBoardState(value: Partial<TestingBoardState>) {
+  return Array.isArray(value.cells) && value.piecesById && Array.isArray(value.pieceIds);
+}
+
+function normalizeStoredTestingBoardRecord(record: Partial<TestingBoardRecord> & LegacyTestingBoardRecord): TestingBoardRecord {
+  const revision = Number.isFinite(record.revision) ? Number(record.revision) : 0;
+
+  if (isTestingBoardState(record)) {
+    return {
+      ...(record as TestingBoardRecord),
+      revision,
+      updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : new Date().toISOString(),
+    };
+  }
+
+  return {
+    ...createTestingBoardState({
+      columns: Number.isFinite(record.columns) ? Number(record.columns) : 24,
+      rows: Number.isFinite(record.rows) ? Number(record.rows) : 14,
+      tileSize: 42,
+      pieces: Array.isArray(record.pieces) ? record.pieces : [],
+      links: Array.isArray(record.links) ? record.links : [],
+    }),
+    revision,
+    updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : new Date().toISOString(),
+  };
 }

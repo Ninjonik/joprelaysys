@@ -1,146 +1,215 @@
 "use client";
 
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { catalog, type PlacedPiece } from "../board-demo";
-import styles from "./testing-board.module.css";
-import { buildRuntimeSnapshot } from "./runtime-snapshot";
-import { getRuntimeDeviceKind, isSelectorLocked, type RuntimeAction } from "./simulation";
-import type { RuntimeSnapshot } from "./runtime-types";
+import {
+  getRuntimeDeviceKinds,
+  isSelectorLocked,
+  type RuntimeDeviceKind,
+  type TestingAction,
+} from "./testing-runtime";
+import { useTestingBoard } from "./use-testing-board";
 
 type Props = {
   piece: PlacedPiece;
   tileSize: number;
-  snapshot: RuntimeSnapshot;
-  runAction: (action: RuntimeAction) => void;
 };
 
-type ZoneRect = {
+type Rect = {
   left: number;
   top: number;
   width: number;
   height: number;
 };
 
-function transformZoneRect(
-  rect: ZoneRect,
-  width: number,
-  height: number,
-  rotation: PlacedPiece["rotation"],
-  mirrored: PlacedPiece["mirrored"],
-) {
-  let nextLeft = rect.left;
-  let nextTop = rect.top;
+type Control = {
+  area?: Rect;
+  title: string;
+  disabled?: boolean;
+  className?: string;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void;
+};
 
-  if (rotation === 180) {
-    nextLeft = width - nextLeft - rect.width;
-    nextTop = height - nextTop - rect.height;
+type ControlContext = {
+  piece: PlacedPiece;
+  runAction: (action: TestingAction) => void;
+  selectorLocked: boolean;
+  width: number;
+  height: number;
+};
+
+const hitboxClassName = "absolute inset-0 border-0 bg-transparent";
+const zoneClassName = "absolute cursor-pointer border-0 bg-transparent";
+
+function transformRect(rect: Rect, width: number, height: number, piece: PlacedPiece) {
+  let left = rect.left;
+  let top = rect.top;
+
+  if (piece.rotation === 180) {
+    left = width - left - rect.width;
+    top = height - top - rect.height;
   }
 
-  if (mirrored) {
-    nextLeft = width - nextLeft - rect.width;
+  if (piece.mirrored) {
+    left = width - left - rect.width;
   }
 
-  return {
-    left: nextLeft,
-    top: nextTop,
-    width: rect.width,
-    height: rect.height,
-  };
+  return { left, top, width: rect.width, height: rect.height };
 }
 
-function getLineblockZones(
-  width: number,
-  height: number,
-  piece: Pick<PlacedPiece, "id" | "rotation" | "mirrored">,
-  runAction: Props["runAction"],
-) {
+function getSelectorControls({ piece, runAction, selectorLocked }: ControlContext): Control[] {
+  return [
+    {
+      title: selectorLocked ? "Switch is moving" : "Left click sets the linked switch to normal. Right click sets it to reverse.",
+      disabled: selectorLocked,
+      className: selectorLocked ? "cursor-default" : "cursor-pointer",
+      onClick: () => {
+        if (!selectorLocked) {
+          runAction({ type: "selector", pieceId: piece.id, direction: "left" });
+        }
+      },
+      onContextMenu: (event) => {
+        event.preventDefault();
+        if (!selectorLocked) {
+          runAction({ type: "selector", pieceId: piece.id, direction: "right" });
+        }
+      },
+    },
+  ];
+}
+
+function getLineblockControls({ piece, runAction, width, height }: ControlContext): Control[] {
   const columnWidth = width / 3;
   const rowHeight = height / 2;
 
   return [
     {
-      key: "requestConsent",
+      area: { left: columnWidth * 2, top: 0, width: columnWidth, height: rowHeight },
       title: "Simulate receiving tratovy souhlas from the remote station after a short delay",
-      rect: { left: columnWidth * 2, top: 0, width: columnWidth, height: rowHeight },
       onClick: () => runAction({ type: "lineblock", pieceId: piece.id, control: "requestConsent" }),
     },
     {
-      key: "dispatchTrain",
+      area: { left: columnWidth, top: 0, width: columnWidth, height: rowHeight },
       title: "Dispatch a train into the line after prijem souhlasu",
-      rect: { left: columnWidth, top: 0, width: columnWidth, height: rowHeight },
       onClick: () => runAction({ type: "lineblock", pieceId: piece.id, control: "dispatchTrain" }),
     },
     {
-      key: "grantConsent",
+      area: { left: columnWidth, top: rowHeight, width: columnWidth, height: rowHeight },
       title: "Tratovy souhlas. Left click grants consent, right click cancels it.",
-      rect: { left: columnWidth, top: rowHeight, width: columnWidth, height: rowHeight },
       onClick: () => runAction({ type: "lineblock", pieceId: piece.id, control: "grantConsent" }),
-      onContextMenu: (event: ReactMouseEvent<HTMLButtonElement>) => {
+      onContextMenu: (event) => {
         event.preventDefault();
         runAction({ type: "lineblock", pieceId: piece.id, control: "cancelConsent" });
       },
     },
     {
-      key: "confirmTrainEnd",
+      area: { left: 0, top: rowHeight, width: columnWidth, height: rowHeight },
       title: "Konec vlaku helper",
-      rect: { left: 0, top: rowHeight, width: columnWidth, height: rowHeight },
       onClick: () => runAction({ type: "lineblock", pieceId: piece.id, control: "confirmTrainEnd" }),
     },
     {
-      key: "grantClearance",
+      area: { left: columnWidth * 2, top: rowHeight, width: columnWidth, height: rowHeight },
       title: "Udeleni odhlasky",
-      rect: { left: columnWidth * 2, top: rowHeight, width: columnWidth, height: rowHeight },
       onClick: () => runAction({ type: "lineblock", pieceId: piece.id, control: "grantClearance" }),
     },
-  ].map((zone) => ({
-    ...zone,
-    style: transformZoneRect(zone.rect, width, height, piece.rotation, piece.mirrored),
-  }));
+  ];
 }
 
-export function TestingPieceControls({ piece, tileSize, snapshot, runAction }: Props) {
-  const deviceKind = getRuntimeDeviceKind(piece.pieceKey);
+function getRouteTriggerControls({ piece, runAction }: ControlContext): Control[] {
+  return [
+    {
+      title: "Route trigger placeholder",
+      className: "cursor-pointer",
+      onClick: () => runAction({ type: "routeTrigger", pieceId: piece.id }),
+    },
+  ];
+}
+
+const controlRenderers: Partial<Record<RuntimeDeviceKind, (context: ControlContext) => Control[]>> = {
+  switchSelector: getSelectorControls,
+  lineblock: getLineblockControls,
+  routeTrigger: getRouteTriggerControls,
+};
+
+function getAreaKey(control: Control) {
+  if (!control.area) {
+    return "hitbox";
+  }
+
+  const { left, top, width, height } = control.area;
+  return `${left}:${top}:${width}:${height}`;
+}
+
+function mergeControls(controls: Control[]) {
+  const groups = new Map<string, Control[]>();
+
+  for (const control of controls) {
+    const key = getAreaKey(control);
+    const current = groups.get(key);
+
+    if (current) {
+      current.push(control);
+    } else {
+      groups.set(key, [control]);
+    }
+  }
+
+  return Array.from(groups.values()).map((group) => {
+    const first = group[0];
+    if (!first) {
+      throw new Error("Missing control group");
+    }
+
+    return {
+      key: getAreaKey(first),
+      area: first.area,
+      title: group.map((control) => control.title).join(" | "),
+      disabled: group.every((control) => control.disabled),
+      className: group.map((control) => control.className).filter(Boolean).join(" "),
+      onClick: (event: MouseEvent<HTMLButtonElement>) => {
+        for (const control of group) {
+          control.onClick?.(event);
+        }
+      },
+      onContextMenu: (event: MouseEvent<HTMLButtonElement>) => {
+        for (const control of group) {
+          control.onContextMenu?.(event);
+        }
+      },
+    };
+  });
+}
+
+export function TestingPieceControls({ piece, tileSize }: Props) {
+  const { board, runAction } = useTestingBoard();
   const definition = catalog.pieces[piece.pieceKey];
   const width = definition.bounds.width * tileSize;
   const height = definition.bounds.height * tileSize;
+  const context = {
+    piece,
+    runAction,
+    selectorLocked: isSelectorLocked(board, piece.id),
+    width,
+    height,
+  };
 
-  if (deviceKind === "switchSelector") {
-    const locked = isSelectorLocked(snapshot, piece.id);
+  const controls = getRuntimeDeviceKinds(piece.pieceKey).flatMap((kind) => controlRenderers[kind]?.(context) ?? []);
 
-    return (
-      <button
-        type="button"
-        className={styles.pieceHitbox}
-        title={locked ? "Switch is moving" : "Left click sets the linked switch to normal. Right click sets it to reverse."}
-        aria-disabled={locked}
-        onClick={() => !locked && runAction({ type: "selector", pieceId: piece.id, direction: "left" })}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          if (!locked) {
-            runAction({ type: "selector", pieceId: piece.id, direction: "right" });
-          }
-        }}
-      />
-    );
-  }
-
-  if (deviceKind !== "lineblock") {
+  if (controls.length === 0) {
     return null;
   }
 
-  return getLineblockZones(width, height, piece, runAction).map((zone) => (
+  return mergeControls(controls).map((control) => (
     <button
-      key={zone.key}
+      key={control.key}
       type="button"
-      className={styles.controlZone}
-      style={zone.style as CSSProperties}
-      title={zone.title}
-      onClick={zone.onClick}
-      onContextMenu={zone.onContextMenu}
+      className={`${control.area ? zoneClassName : hitboxClassName}${control.className ? ` ${control.className}` : ""}`}
+      style={control.area ? (transformRect(control.area, width, height, piece) as CSSProperties) : undefined}
+      title={control.title}
+      aria-disabled={control.disabled}
+      onClick={control.onClick}
+      onContextMenu={control.onContextMenu}
     />
   ));
-}
-
-export function buildTestingSnapshot(pieces: PlacedPiece[], links: Props["snapshot"]["links"]) {
-  return buildRuntimeSnapshot(pieces, links);
 }

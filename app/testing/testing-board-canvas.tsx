@@ -3,34 +3,33 @@
 import type { RefObject } from "react";
 import { BoardSurface } from "../board/board-surface";
 import { PlacedPieceLayer } from "../board/placed-piece-layer";
-import { PiecePreview, catalog, type PieceLink, type PlacedPiece } from "../board-demo";
-import styles from "./testing-board.module.css";
-import { getRuntimeDeviceKind, type RuntimeAction } from "./simulation";
-import { TestingPieceControls, buildTestingSnapshot } from "./testing-piece-controls";
+import { PiecePreview, catalog } from "../board-demo";
+import { TestingPieceControls } from "./testing-piece-controls";
+import { getRuntimeDeviceKinds } from "./testing-runtime";
+import { useTestingBoard } from "./use-testing-board";
 
 type Props = {
   boardScrollerRef: RefObject<HTMLDivElement | null>;
-  columns: number;
-  rows: number;
-  pieces: PlacedPiece[];
-  links: PieceLink[];
-  tileSize: number;
-  runAction: (action: RuntimeAction) => void;
 };
 
-export function TestingBoardCanvas({ boardScrollerRef, columns, rows, pieces, links, tileSize, runAction }: Props) {
-  const snapshot = buildTestingSnapshot(pieces, links);
+export function TestingBoardCanvas({ boardScrollerRef }: Props) {
+  const { board, pieces } = useTestingBoard();
 
   return (
-    <div ref={boardScrollerRef} className={styles.boardScroller}>
-      <BoardSurface columns={columns} rows={rows} tileSize={tileSize} className={styles.board}>
+    <div ref={boardScrollerRef} className="overflow-auto pb-0">
+      <BoardSurface
+        columns={board.columns}
+        rows={board.rows}
+        tileSize={board.tileSize}
+        className="relative overflow-hidden rounded-[22px] border border-[rgba(30,45,42,0.14)] bg-[#b1b9b5] bg-[url('/assets/board/Board_1Square.svg')] bg-repeat"
+      >
         <PlacedPieceLayer
           pieces={pieces}
-          tileSize={tileSize}
-          layerClassName={styles.pieces}
-          pieceClassName={styles.piece}
+          tileSize={board.tileSize}
+          layerClassName="absolute inset-0"
+          pieceClassName="absolute z-[2]"
           getBounds={(piece) => catalog.pieces[piece.pieceKey].bounds}
-          getPieceClassName={(piece) => (getRuntimeDeviceKind(piece.pieceKey) !== "other" ? styles.pieceInteractive : undefined)}
+          getPieceClassName={(piece) => (getRuntimeDeviceKinds(piece.pieceKey).some((deviceKind) => deviceKind !== "other") ? "z-[4]" : undefined)}
           renderPiece={(piece) => {
             const definition = catalog.pieces[piece.pieceKey];
 
@@ -44,9 +43,9 @@ export function TestingBoardCanvas({ boardScrollerRef, columns, rows, pieces, li
                   mirrored={piece.mirrored}
                   textSize={piece.textSize}
                   text={piece.text}
-                  tileSize={tileSize}
+                  tileSize={board.tileSize}
                 />
-                <TestingPieceControls piece={piece} tileSize={tileSize} snapshot={snapshot} runAction={runAction} />
+                <TestingPieceControls piece={piece} tileSize={board.tileSize} />
               </>
             );
           }}

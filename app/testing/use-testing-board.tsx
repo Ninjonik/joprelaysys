@@ -4,21 +4,17 @@ import type { ChangeEvent, PropsWithChildren, RefObject } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { BOARD_TILE, INITIAL_COLUMNS, INITIAL_ROWS, parseImportedPieces } from "../board-demo";
 import {
-  applyBoardStateUpdates,
   createTestingBoardState,
   createTestingBoardStateFromRecord,
   getBoardPieces,
-  planRuntimeAction,
-  type PieceStateUpdate,
   type TestingAction,
   type TestingBoardRecord,
   type TestingBoardState,
-  type TestingRuntimeOutcome,
 } from "./testing-runtime";
 import {
   readTestingBoardAction,
   replaceTestingBoardAction,
-  updateTestingBoardStatesAction,
+  runTestingActionAction,
 } from "./testing-board-actions";
 
 type TestingBoardContextValue = {
@@ -32,22 +28,6 @@ type TestingBoardContextValue = {
 
 const TestingBoardContext = createContext<TestingBoardContextValue | null>(null);
 
-async function publishStateUpdates(updates: PieceStateUpdate[]) {
-  if (updates.length === 0) {
-    return null;
-  }
-
-  return updateTestingBoardStatesAction(updates);
-}
-
-function clearTimers(timers: Set<number>) {
-  for (const timer of timers) {
-    window.clearTimeout(timer);
-  }
-
-  timers.clear();
-}
-
 function useBoardState() {
   const [board, setBoard] = useState(() =>
     createTestingBoardState({
@@ -59,7 +39,6 @@ function useBoardState() {
     }),
   );
   const boardRef = useRef(board);
-  const timersRef = useRef(new Set<number>());
   const boardScrollerRef = useRef<HTMLDivElement | null>(null);
   const remoteRevisionRef = useRef<number>(-1);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -70,7 +49,6 @@ function useBoardState() {
 
   useEffect(
     () => () => {
-      clearTimers(timersRef.current);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
@@ -92,33 +70,14 @@ function useBoardState() {
     updateBoard((current) => createTestingBoardStateFromRecord(record, current.tileSize));
   }, []);
 
-  async function pushStateUpdates(updates: PieceStateUpdate[]) {
-    const record = await publishStateUpdates(updates);
-
-    if (record) {
-      remoteRevisionRef.current = record.revision;
-    }
-  }
-
-  function runOutcome(outcome: TestingRuntimeOutcome) {
-    if (outcome.immediate.length > 0) {
-      updateBoard((current) => applyBoardStateUpdates(current, outcome.immediate));
-      void pushStateUpdates(outcome.immediate);
-    }
-
-    for (const delayed of outcome.delayed) {
-      const timer = window.setTimeout(() => {
-        updateBoard((current) => applyBoardStateUpdates(current, delayed.updates));
-        timersRef.current.delete(timer);
-        void pushStateUpdates(delayed.updates);
-      }, delayed.delayMs);
-
-      timersRef.current.add(timer);
-    }
-  }
-
   function runAction(action: TestingAction) {
-    runOutcome(planRuntimeAction(boardRef.current, action));
+    void (async () => {
+      const record = await runTestingActionAction(action);
+
+      if (record.revision >= remoteRevisionRef.current) {
+        replaceBoardFromRecord(record);
+      }
+    })();
   }
 
   function setTileSize(tileSize: number) {
@@ -175,8 +134,6 @@ function useBoardState() {
     if (!file) {
       return;
     }
-
-    clearTimers(timersRef.current);
 
     const imported = parseImportedPieces(await file.text());
     const nextBoard = createTestingBoardState({

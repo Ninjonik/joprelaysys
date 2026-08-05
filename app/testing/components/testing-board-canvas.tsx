@@ -1,12 +1,12 @@
 "use client";
 
 import type { RefObject } from "react";
-import { BoardSurface } from "../board/board-surface";
-import { PlacedPieceLayer } from "../board/placed-piece-layer";
-import { PiecePreview, catalog } from "../board-demo";
-import { TestingPieceControls } from "./testing-piece-controls";
-import { getRuntimeDeviceKinds } from "./testing-runtime";
-import { useTestingBoard } from "./use-testing-board";
+import { BoardSurface } from "../../board/board-surface";
+import { PlacedPieceLayer } from "../../board/placed-piece-layer";
+import { PiecePreview, catalog } from "../../board-demo";
+import { getRuntimeDeviceKinds } from "../runtime";
+import { useTestingBoard } from "../hooks/use-testing-board";
+import { TestingPieceControls } from "./controls/testing-piece-controls";
 
 type Props = {
   boardScrollerRef: RefObject<HTMLDivElement | null>;

@@ -2,7 +2,7 @@
 
 import type { ChangeEvent, PropsWithChildren, RefObject } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { BOARD_TILE, INITIAL_COLUMNS, INITIAL_ROWS, parseImportedPieces } from "../board-demo";
+import { BOARD_TILE, INITIAL_COLUMNS, INITIAL_ROWS, parseImportedPieces } from "../../board-demo";
 import {
   createTestingBoardState,
   createTestingBoardStateFromRecord,
@@ -10,12 +10,12 @@ import {
   type TestingAction,
   type TestingBoardRecord,
   type TestingBoardState,
-} from "./testing-runtime";
+} from "../runtime";
 import {
   readTestingBoardAction,
   replaceTestingBoardAction,
   runTestingActionAction,
-} from "./testing-board-actions";
+} from "../actions/testing-board-actions";
 
 type TestingBoardContextValue = {
   board: TestingBoardState;

@@ -11,7 +11,7 @@ import {
   type PieceStateUpdate,
   type TestingBoardRecord,
   type TestingBoardRecordInput,
-} from "./testing-runtime";
+} from "../runtime";
 
 const COLLECTION_NAME = "testing_board";
 const RECORD_ID = "singleton";

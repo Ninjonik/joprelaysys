@@ -5,12 +5,12 @@ import {
   replaceTestingBoardRecord,
   runTestingBoardAction,
   updateTestingBoardStates,
-} from "./testing-board-store";
+} from "../data/testing-board-store";
 import type {
   PieceStateUpdate,
   TestingAction,
   TestingBoardRecordInput,
-} from "./testing-runtime";
+} from "../runtime";
 
 export async function readTestingBoardAction() {
   return readTestingBoardRecord();

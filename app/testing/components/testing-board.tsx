@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { TestingBoardProvider, useTestingBoard } from "../hooks/use-testing-board";
 import { TestingBoardCanvas } from "./testing-board-canvas";
-import { TestingBoardProvider, useTestingBoard } from "./use-testing-board";
 
 function TestingBoardView() {
   const {
@@ -68,9 +68,7 @@ function TestingBoardView() {
             </label>
           </header>
 
-          <TestingBoardCanvas
-            boardScrollerRef={boardScrollerRef}
-          />
+          <TestingBoardCanvas boardScrollerRef={boardScrollerRef} />
         </section>
       </div>
     </main>

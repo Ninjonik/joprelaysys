@@ -1,4 +1,4 @@
-import { readTestingBoardRecord, watchTestingBoardRecord } from "@/app/testing/testing-board-store";
+import { readTestingBoardRecord, watchTestingBoardRecord } from "@/app/testing/data/testing-board-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

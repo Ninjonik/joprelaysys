@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "board:ascii": "node scripts/board-to-ascii.mjs"
   },
   "dependencies": {
     "mongodb": "^6.20.0",

@@ -2,36 +2,40 @@ import type { PlacedPiece } from "../../board-demo";
 import { applyBoardStateUpdates, getBoardPieces, getPiece } from "./board-state";
 import { getRuntimeDeviceKinds } from "./device-kinds";
 import { getDefaultPieceState, getPieceDefinition, getStateModelKind } from "./piece-catalog";
+import { getActiveNodeGroups, type AbsolutePort, type PortSide } from "./route-ports";
 import { clearReservedSwitchState, reserveSwitchState } from "./switch-actions";
 import type { PieceStateUpdate, TestingBoardState, TestingRuntimeOutcome } from "./types";
+
 
 const ROUTE_TRIGGER_SELECTED_STATE = "armed";
 const ROUTE_TRIGGER_IDLE_STATE = "idle";
 
-function getPieceOccupiedCells(piece: PlacedPiece) {
-  const definition = getPieceDefinition(piece);
-  return definition.occupied.map(([offsetX, offsetY]) => ({
-    x: piece.x + offsetX,
-    y: piece.y + offsetY,
-  }));
+function cellSideKey(x: number, y: number, side: PortSide) {
+  return `${x}:${y}:${side}`;
 }
 
-function cellKey(x: number, y: number) {
-  return `${x}:${y}`;
-}
+const OPPOSITE_SIDE: Record<PortSide, PortSide> = {
+  left: "right",
+  right: "left",
+  top: "bottom",
+  bottom: "top",
+};
 
-function areCellsAdjacent(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
-}
+const SIDE_OFFSET: Record<PortSide, { dx: number; dy: number }> = {
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+  top: { dx: 0, dy: -1 },
+  bottom: { dx: 0, dy: 1 },
+};
 
 function isRouteNode(piece: PlacedPiece) {
   const kind = getStateModelKind(piece);
   return (
-    kind === "trackOccupancy"
-    || kind === "switchPosition"
-    || kind === "switchCrossover"
-    || kind === "signalAspect"
-    || getRuntimeDeviceKinds(piece.pieceKey).includes("routeTrigger")
+      kind === "trackOccupancy"
+      || kind === "switchPosition"
+      || kind === "switchCrossover"
+      || kind === "signalAspect"
+      || getRuntimeDeviceKinds(piece.pieceKey).includes("routeTrigger")
   );
 }
 
@@ -105,43 +109,52 @@ function addGraphEdge(graph: Map<string, Set<string>>, a: string, b: string) {
   graph.set(b, bEdges);
 }
 
+function nodeId(pieceId: string, suffix: string) {
+  return suffix ? `${pieceId}#${suffix}` : pieceId;
+}
+
+function pieceIdFromNode(node: string) {
+  const hashIndex = node.indexOf("#");
+  return hashIndex === -1 ? node : node.slice(0, hashIndex);
+}
+
+/**
+ * Builds a graph over *node groups* (piece, or piece+branch-group for
+ * multi-branch pieces like crossovers) using explicit port geometry rather
+ * than raw cell-boundary adjacency. Two ports connect only if one piece's
+ * port faces directly into the matching opposite-side port of a neighbor -
+ * this is what prevents unrelated parallel tracks or a switch's inactive
+ * branch from producing false edges.
+ */
 function buildRouteGraph(board: TestingBoardState) {
   const routePieces = getBoardPieces(board).filter(isRouteNode);
-  const routePieceIds = new Set(routePieces.map((piece) => piece.id));
   const graph = new Map<string, Set<string>>();
-  const piecesByCell = new Map<string, string[]>();
+
+  type IndexedPort = { node: string; port: AbsolutePort };
+  const portsBySocket = new Map<string, IndexedPort[]>();
 
   for (const piece of routePieces) {
-    graph.set(piece.id, graph.get(piece.id) ?? new Set<string>());
+    const groups = getActiveNodeGroups(piece);
 
-    for (const cell of getPieceOccupiedCells(piece)) {
-      const key = cellKey(cell.x, cell.y);
-      piecesByCell.set(key, [...(piecesByCell.get(key) ?? []), piece.id]);
+    for (const group of groups) {
+      const node = nodeId(piece.id, group.suffix);
+      graph.set(node, graph.get(node) ?? new Set<string>());
+
+      for (const port of group.ports) {
+        const key = cellSideKey(port.x, port.y, port.side);
+        portsBySocket.set(key, [...(portsBySocket.get(key) ?? []), { node, port }]);
+      }
     }
   }
 
-  for (const piece of routePieces) {
-    for (const cell of getPieceOccupiedCells(piece)) {
-      const candidates = [
-        ...(piecesByCell.get(cellKey(cell.x, cell.y)) ?? []),
-        ...(piecesByCell.get(cellKey(cell.x + 1, cell.y)) ?? []),
-        ...(piecesByCell.get(cellKey(cell.x - 1, cell.y)) ?? []),
-        ...(piecesByCell.get(cellKey(cell.x, cell.y + 1)) ?? []),
-        ...(piecesByCell.get(cellKey(cell.x, cell.y - 1)) ?? []),
-      ];
+  for (const [, indexedPorts] of portsBySocket) {
+    for (const { node, port } of indexedPorts) {
+      const offset = SIDE_OFFSET[port.side];
+      const neighborKey = cellSideKey(port.x + offset.dx, port.y + offset.dy, OPPOSITE_SIDE[port.side]);
+      const neighbors = portsBySocket.get(neighborKey) ?? [];
 
-      for (const candidateId of candidates) {
-        const candidate = board.piecesById[candidateId];
-
-        if (!candidate || candidate.id === piece.id) {
-          continue;
-        }
-
-        if (getPieceOccupiedCells(candidate).some((candidateCell) => (
-          (candidateCell.x === cell.x && candidateCell.y === cell.y) || areCellsAdjacent(candidateCell, cell)
-        ))) {
-          addGraphEdge(graph, piece.id, candidate.id);
-        }
+      for (const neighbor of neighbors) {
+        addGraphEdge(graph, node, neighbor.node);
       }
     }
   }
@@ -182,8 +195,16 @@ function findRoutePath(board: TestingBoardState, startId: string, destinationId:
 
 function buildReserveRouteUpdates(board: TestingBoardState, path: string[]) {
   const updates: PieceStateUpdate[] = [];
+  const seenPieceIds = new Set<string>();
 
-  for (const pieceId of path) {
+  for (const node of path) {
+    const pieceId = pieceIdFromNode(node);
+
+    if (seenPieceIds.has(pieceId)) {
+      continue;
+    }
+    seenPieceIds.add(pieceId);
+
     const piece = getPiece(board, pieceId);
 
     if (!piece) {
@@ -211,9 +232,9 @@ export function planRouteAction(board: TestingBoardState, pieceId: string): Test
 
   const clearUpdates = buildClearRouteUpdates(board);
   const selectedTrigger = getBoardPieces(board).find((candidate) => (
-    candidate.id !== pieceId
-    && getRuntimeDeviceKinds(candidate.pieceKey).includes("routeTrigger")
-    && candidate.state === ROUTE_TRIGGER_SELECTED_STATE
+      candidate.id !== pieceId
+      && getRuntimeDeviceKinds(candidate.pieceKey).includes("routeTrigger")
+      && candidate.state === ROUTE_TRIGGER_SELECTED_STATE
   ));
 
   if (!selectedTrigger) {
@@ -225,6 +246,29 @@ export function planRouteAction(board: TestingBoardState, pieceId: string): Test
 
   const boardAfterClear = applyBoardStateUpdates(board, clearUpdates);
   const path = findRoutePath(boardAfterClear, selectedTrigger.id, pieceId);
+
+
+  for (const p of getBoardPieces(boardAfterClear)) {
+    if (!isRouteNode(p)) continue;
+    const groups = getActiveNodeGroups(p);
+    console.log(
+        p.pieceKey,
+        { x: p.x, y: p.y, rotation: p.rotation, mirrored: p.mirrored, state: p.state },
+        "groups:",
+        groups.map(g => ({
+          suffix: g.suffix,
+          ports: g.ports.map(port => `${port.id}@(${port.x},${port.y})-${port.side}`),
+        })),
+    );
+  }
+
+  console.log(
+      "PATH:",
+      path?.map((id) => {
+        const p = getPiece(boardAfterClear, id);
+        return p ? { key: p.pieceKey, anchor: [p.x, p.y] } : null;
+      })
+  );
 
   if (!path) {
     return {

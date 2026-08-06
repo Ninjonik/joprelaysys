@@ -1,0 +1,47 @@
+Legend:
+. = empty
+T = track.main
+t = track.main.noocp
+S = track.sign
+s = track.sign.noocp
+E = switch.extended
+M = switch.single.mirror
+C = switch.crossover
+c = switch.crossover.mirror
+B = button.switchSelector
+D = button.departure
+H = button.shunt
+h = button.shunt.noocp
+U = button.shuntBufferSignal
+L = button.lineblock
+G = button.sign / button.sign.light
+K = button.sign.sealedCounter
+R = signal.departure2
+I = signal.entry
+P = signal.premain
+Q = signal.shunt
+q = signal.shunt.noocp
+X = board.dispatcherBuilding
+F = sign.fourLabel
+
+Grid:
+    012345678901234567890123
+00: ........................
+01: ........................
+02: ...BBB..FFFF.BBBBBBBB...
+03: ...BBB...GGG.BBBBBBBBLLL
+04: ........GGG..........LLL
+05: .....EERDTTTSDRM........
+06: .....EERDTTTSDRMCTCQUIPT
+07: TPIHQEMRDTTTSDRCCTCQHIPT
+08: ......MqhtttshqCU.......
+09: .LLL........X.......LLL.
+10: .LLL...KK.....KKK...LLL.
+11: ........................
+12: ........................
+13: ........................
+
+Notes:
+- This map uses 1 character per tile.
+- Spaces inside a row are intentional in this file only if needed for readability; empty tiles are `.`.
+- The important debug area is rows 5-8 around the switches and route path.

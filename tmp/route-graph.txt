@@ -1,0 +1,175 @@
+Nodes:
+13d98124-a39b-4f79-8d2a-14b007ce7e23: 0e0d860b-1a11-464d-9ac0-5ba62dc9a698, 1d650eac-4e9f-4490-a471-0bcc103b3b01
+c5c0dd46-fab2-4399-ac8c-364163a8ec81: 
+ce228f1c-17cd-474a-a3df-2a1d32ebd0aa: d901338a-780d-4bb2-97ca-749b67a7e505
+d901338a-780d-4bb2-97ca-749b67a7e505: ce228f1c-17cd-474a-a3df-2a1d32ebd0aa, 44946f91-e8e3-4b88-9840-34a1c90fed90
+44946f91-e8e3-4b88-9840-34a1c90fed90: d901338a-780d-4bb2-97ca-749b67a7e505, e7ed3aae-61b9-4b03-ab88-cda10f963c77
+e7ed3aae-61b9-4b03-ab88-cda10f963c77: 44946f91-e8e3-4b88-9840-34a1c90fed90
+0896a3ae-0267-4c8c-973f-32dad7932615: 
+a23a2c85-e627-4dd5-9e2a-4ecd36e25c46: c112cf70-9c3a-47ed-a5b8-926747c2c40f#top, 699ee387-eadf-4384-bba0-3619f30ac080
+1d650eac-4e9f-4490-a471-0bcc103b3b01: 13d98124-a39b-4f79-8d2a-14b007ce7e23
+ce00cd4d-cbdf-433d-afd7-28d7265f9134: 618ddc05-0db6-4545-9098-8f121313cdda
+618ddc05-0db6-4545-9098-8f121313cdda: ce00cd4d-cbdf-433d-afd7-28d7265f9134, d3624857-0260-4abf-9211-22d926767346
+d3624857-0260-4abf-9211-22d926767346: 618ddc05-0db6-4545-9098-8f121313cdda, d602e361-0359-46c1-953b-3a9c7c223945
+d602e361-0359-46c1-953b-3a9c7c223945: d3624857-0260-4abf-9211-22d926767346
+699ee387-eadf-4384-bba0-3619f30ac080: a23a2c85-e627-4dd5-9e2a-4ecd36e25c46
+c112cf70-9c3a-47ed-a5b8-926747c2c40f#top: a23a2c85-e627-4dd5-9e2a-4ecd36e25c46, ec727055-997b-442f-911d-2f2e35bcb55a
+c112cf70-9c3a-47ed-a5b8-926747c2c40f#bottom: 109ef697-1bfc-46da-851c-1df151edc894#top, 3fe1fab7-844a-4eec-bd6e-2135c9247bbd
+ec727055-997b-442f-911d-2f2e35bcb55a: c112cf70-9c3a-47ed-a5b8-926747c2c40f#top, eb0060d6-f658-45c3-b264-3763d8d76510#top
+eb0060d6-f658-45c3-b264-3763d8d76510#top: ec727055-997b-442f-911d-2f2e35bcb55a, 5e6e0502-b800-42a4-b80d-3fe54872a92b
+eb0060d6-f658-45c3-b264-3763d8d76510#bottom: 3fe1fab7-844a-4eec-bd6e-2135c9247bbd, 89a78909-6f4b-44c4-abf4-112d2de71fa3
+5e6e0502-b800-42a4-b80d-3fe54872a92b: eb0060d6-f658-45c3-b264-3763d8d76510#top
+0b0680ab-aff0-4203-bab4-e42210e1b87f: a531db31-f074-4797-90b7-e431a3b9a2c5
+a531db31-f074-4797-90b7-e431a3b9a2c5: 0b0680ab-aff0-4203-bab4-e42210e1b87f, 561c6f71-76d3-4d97-8f8c-4ebc464737e2
+561c6f71-76d3-4d97-8f8c-4ebc464737e2: a531db31-f074-4797-90b7-e431a3b9a2c5
+a6a802a4-a9cf-4205-aa86-3dafac057404: 6cabb53d-8544-4dd8-9a38-2d452b87e7f1
+6cabb53d-8544-4dd8-9a38-2d452b87e7f1: a6a802a4-a9cf-4205-aa86-3dafac057404, e8dd73f3-d3b4-4f8b-9a0e-4d7a34cce471
+e8dd73f3-d3b4-4f8b-9a0e-4d7a34cce471: 6cabb53d-8544-4dd8-9a38-2d452b87e7f1
+0e0d860b-1a11-464d-9ac0-5ba62dc9a698: 13d98124-a39b-4f79-8d2a-14b007ce7e23
+0a6e67bd-5dc6-4499-a547-863767ef29b0: 7c396996-7e89-4598-bb7f-f027063edb42
+7c396996-7e89-4598-bb7f-f027063edb42: 0a6e67bd-5dc6-4499-a547-863767ef29b0
+091681eb-4446-4531-8ad7-f6d287ecfed1: 9a6fc864-c0c9-4acf-997e-61d86b8cf62a
+9a6fc864-c0c9-4acf-997e-61d86b8cf62a: 091681eb-4446-4531-8ad7-f6d287ecfed1, 73d912be-cbff-47ce-8918-344f68125b5a
+73d912be-cbff-47ce-8918-344f68125b5a: 9a6fc864-c0c9-4acf-997e-61d86b8cf62a, 98187745-cc96-4033-85e9-125f6977cb7b
+98187745-cc96-4033-85e9-125f6977cb7b: 73d912be-cbff-47ce-8918-344f68125b5a
+7b6bf994-b584-43d7-8293-4c7c8fe6243b: 109ef697-1bfc-46da-851c-1df151edc894#top
+109ef697-1bfc-46da-851c-1df151edc894#top: c112cf70-9c3a-47ed-a5b8-926747c2c40f#bottom, 7b6bf994-b584-43d7-8293-4c7c8fe6243b
+109ef697-1bfc-46da-851c-1df151edc894#bottom: f8b8966a-b698-4f28-8254-e52cc58a14f9
+3fe1fab7-844a-4eec-bd6e-2135c9247bbd: c112cf70-9c3a-47ed-a5b8-926747c2c40f#bottom, eb0060d6-f658-45c3-b264-3763d8d76510#bottom
+89a78909-6f4b-44c4-abf4-112d2de71fa3: eb0060d6-f658-45c3-b264-3763d8d76510#bottom
+736ff6ae-4537-4731-9fc4-54b60347335e: 3134ec26-e164-422b-9643-a90d7716158b
+3134ec26-e164-422b-9643-a90d7716158b: 736ff6ae-4537-4731-9fc4-54b60347335e, 2b144794-4edb-4358-853d-4e6a2545daa2
+2b144794-4edb-4358-853d-4e6a2545daa2: 3134ec26-e164-422b-9643-a90d7716158b
+fd20b270-eda5-426b-8069-7fb23ebb88e1: 
+e2d9e772-a884-4044-8385-d1ab74eeab86: 1c43e900-d091-471d-931d-740a0d18681e
+1c43e900-d091-471d-931d-740a0d18681e: e2d9e772-a884-4044-8385-d1ab74eeab86, 0bf9daa5-3f4f-4861-a181-40d13e44703e
+0bf9daa5-3f4f-4861-a181-40d13e44703e: 1c43e900-d091-471d-931d-740a0d18681e, 6fe1dcac-d9a0-4b77-8b97-055835b51324
+6fe1dcac-d9a0-4b77-8b97-055835b51324: 0bf9daa5-3f4f-4861-a181-40d13e44703e
+f8b8966a-b698-4f28-8254-e52cc58a14f9: 109ef697-1bfc-46da-851c-1df151edc894#bottom
+
+Ports:
+switch.extended @ (5,5) rot=0 mir=false
+  (main): stem@(5,7)-left, normal@(6,6)-right
+signal.departure2 @ (7,5) rot=0 mir=false
+  (main): a@(7,5)-left, b@(7,5)-right
+track.main @ (9,5) rot=0 mir=false
+  (main): a@(9,5)-left, b@(9,5)-right
+track.main @ (10,5) rot=0 mir=false
+  (main): a@(10,5)-left, b@(10,5)-right
+track.main @ (11,5) rot=0 mir=false
+  (main): a@(11,5)-left, b@(11,5)-right
+track.sign @ (12,5) rot=0 mir=false
+  (main): a@(12,5)-left, b@(12,5)-right
+signal.departure2 @ (14,5) rot=180 mir=false
+  (main): a@(14,5)-right, b@(14,5)-left
+switch.single.mirror @ (15,5) rot=0 mir=false
+  (main): stem@(15,6)-right, normal@(15,6)-left
+signal.departure2 @ (7,6) rot=0 mir=false
+  (main): a@(7,6)-left, b@(7,6)-right
+track.main @ (9,6) rot=0 mir=false
+  (main): a@(9,6)-left, b@(9,6)-right
+track.main @ (10,6) rot=0 mir=false
+  (main): a@(10,6)-left, b@(10,6)-right
+track.main @ (11,6) rot=0 mir=false
+  (main): a@(11,6)-left, b@(11,6)-right
+track.sign @ (12,6) rot=0 mir=false
+  (main): a@(12,6)-left, b@(12,6)-right
+signal.departure2 @ (14,6) rot=180 mir=false
+  (main): a@(14,6)-right, b@(14,6)-left
+switch.crossover.mirror @ (16,6) rot=0 mir=false
+  top: topLeft@(16,6)-left, topRight@(16,6)-right
+  bottom: bottomLeft@(16,7)-left, bottomRight@(16,7)-right
+track.main @ (17,6) rot=0 mir=false
+  (main): a@(17,6)-left, b@(17,6)-right
+switch.crossover @ (18,6) rot=0 mir=false
+  top: topLeft@(18,6)-left, topRight@(18,6)-right
+  bottom: bottomLeft@(18,7)-left, bottomRight@(18,7)-right
+signal.shunt @ (19,6) rot=180 mir=false
+  (main): a@(19,6)-right, b@(19,6)-left
+signal.entry @ (21,6) rot=180 mir=false
+  (main): a@(21,6)-right, b@(21,6)-left
+signal.premain @ (22,6) rot=0 mir=false
+  (main): a@(22,6)-left, b@(22,6)-right
+track.main @ (23,6) rot=0 mir=false
+  (main): a@(23,6)-left, b@(23,6)-right
+track.main @ (0,7) rot=0 mir=false
+  (main): a@(0,7)-left, b@(0,7)-right
+signal.premain @ (1,7) rot=180 mir=false
+  (main): a@(1,7)-right, b@(1,7)-left
+signal.entry @ (2,7) rot=0 mir=false
+  (main): a@(2,7)-left, b@(2,7)-right
+signal.shunt @ (4,7) rot=0 mir=false
+  (main): a@(4,7)-left, b@(4,7)-right
+switch.single.mirror @ (6,7) rot=180 mir=false
+  (main): stem@(6,7)-left, normal@(6,7)-right
+signal.departure2 @ (7,7) rot=0 mir=false
+  (main): a@(7,7)-left, b@(7,7)-right
+track.main @ (9,7) rot=0 mir=false
+  (main): a@(9,7)-left, b@(9,7)-right
+track.main @ (10,7) rot=0 mir=false
+  (main): a@(10,7)-left, b@(10,7)-right
+track.main @ (11,7) rot=0 mir=false
+  (main): a@(11,7)-left, b@(11,7)-right
+track.sign @ (12,7) rot=0 mir=false
+  (main): a@(12,7)-left, b@(12,7)-right
+signal.departure2 @ (14,7) rot=180 mir=false
+  (main): a@(14,7)-right, b@(14,7)-left
+switch.crossover @ (15,7) rot=0 mir=false
+  top: topLeft@(15,7)-left, topRight@(15,7)-right
+  bottom: bottomLeft@(15,8)-left, bottomRight@(15,8)-right
+track.main @ (17,7) rot=0 mir=false
+  (main): a@(17,7)-left, b@(17,7)-right
+signal.shunt @ (19,7) rot=180 mir=false
+  (main): a@(19,7)-right, b@(19,7)-left
+signal.entry @ (21,7) rot=180 mir=false
+  (main): a@(21,7)-right, b@(21,7)-left
+signal.premain @ (22,7) rot=0 mir=false
+  (main): a@(22,7)-left, b@(22,7)-right
+track.main @ (23,7) rot=0 mir=false
+  (main): a@(23,7)-left, b@(23,7)-right
+signal.shunt.noocp @ (7,8) rot=180 mir=false
+  (main): a@(7,8)-right, b@(7,8)-left
+track.main.noocp @ (9,8) rot=0 mir=false
+  (main): a@(9,8)-left, b@(9,8)-right
+track.main.noocp @ (10,8) rot=0 mir=false
+  (main): a@(10,8)-left, b@(10,8)-right
+track.main.noocp @ (11,8) rot=0 mir=false
+  (main): a@(11,8)-left, b@(11,8)-right
+track.sign.noocp @ (12,8) rot=0 mir=false
+  (main): a@(12,8)-left, b@(12,8)-right
+signal.shunt.noocp @ (14,8) rot=0 mir=false
+  (main): a@(14,8)-left, b@(14,8)-right
+
+Edges:
+13d98124-a39b-4f79-8d2a-14b007ce7e23 <-> 0e0d860b-1a11-464d-9ac0-5ba62dc9a698
+13d98124-a39b-4f79-8d2a-14b007ce7e23 <-> 1d650eac-4e9f-4490-a471-0bcc103b3b01
+ce228f1c-17cd-474a-a3df-2a1d32ebd0aa <-> d901338a-780d-4bb2-97ca-749b67a7e505
+d901338a-780d-4bb2-97ca-749b67a7e505 <-> 44946f91-e8e3-4b88-9840-34a1c90fed90
+44946f91-e8e3-4b88-9840-34a1c90fed90 <-> e7ed3aae-61b9-4b03-ab88-cda10f963c77
+a23a2c85-e627-4dd5-9e2a-4ecd36e25c46 <-> c112cf70-9c3a-47ed-a5b8-926747c2c40f#top
+a23a2c85-e627-4dd5-9e2a-4ecd36e25c46 <-> 699ee387-eadf-4384-bba0-3619f30ac080
+ce00cd4d-cbdf-433d-afd7-28d7265f9134 <-> 618ddc05-0db6-4545-9098-8f121313cdda
+618ddc05-0db6-4545-9098-8f121313cdda <-> d3624857-0260-4abf-9211-22d926767346
+d3624857-0260-4abf-9211-22d926767346 <-> d602e361-0359-46c1-953b-3a9c7c223945
+c112cf70-9c3a-47ed-a5b8-926747c2c40f#top <-> ec727055-997b-442f-911d-2f2e35bcb55a
+c112cf70-9c3a-47ed-a5b8-926747c2c40f#bottom <-> 109ef697-1bfc-46da-851c-1df151edc894#top
+c112cf70-9c3a-47ed-a5b8-926747c2c40f#bottom <-> 3fe1fab7-844a-4eec-bd6e-2135c9247bbd
+ec727055-997b-442f-911d-2f2e35bcb55a <-> eb0060d6-f658-45c3-b264-3763d8d76510#top
+eb0060d6-f658-45c3-b264-3763d8d76510#top <-> 5e6e0502-b800-42a4-b80d-3fe54872a92b
+eb0060d6-f658-45c3-b264-3763d8d76510#bottom <-> 3fe1fab7-844a-4eec-bd6e-2135c9247bbd
+eb0060d6-f658-45c3-b264-3763d8d76510#bottom <-> 89a78909-6f4b-44c4-abf4-112d2de71fa3
+0b0680ab-aff0-4203-bab4-e42210e1b87f <-> a531db31-f074-4797-90b7-e431a3b9a2c5
+a531db31-f074-4797-90b7-e431a3b9a2c5 <-> 561c6f71-76d3-4d97-8f8c-4ebc464737e2
+a6a802a4-a9cf-4205-aa86-3dafac057404 <-> 6cabb53d-8544-4dd8-9a38-2d452b87e7f1
+6cabb53d-8544-4dd8-9a38-2d452b87e7f1 <-> e8dd73f3-d3b4-4f8b-9a0e-4d7a34cce471
+0a6e67bd-5dc6-4499-a547-863767ef29b0 <-> 7c396996-7e89-4598-bb7f-f027063edb42
+091681eb-4446-4531-8ad7-f6d287ecfed1 <-> 9a6fc864-c0c9-4acf-997e-61d86b8cf62a
+9a6fc864-c0c9-4acf-997e-61d86b8cf62a <-> 73d912be-cbff-47ce-8918-344f68125b5a
+73d912be-cbff-47ce-8918-344f68125b5a <-> 98187745-cc96-4033-85e9-125f6977cb7b
+7b6bf994-b584-43d7-8293-4c7c8fe6243b <-> 109ef697-1bfc-46da-851c-1df151edc894#top
+109ef697-1bfc-46da-851c-1df151edc894#bottom <-> f8b8966a-b698-4f28-8254-e52cc58a14f9
+736ff6ae-4537-4731-9fc4-54b60347335e <-> 3134ec26-e164-422b-9643-a90d7716158b
+3134ec26-e164-422b-9643-a90d7716158b <-> 2b144794-4edb-4358-853d-4e6a2545daa2
+e2d9e772-a884-4044-8385-d1ab74eeab86 <-> 1c43e900-d091-471d-931d-740a0d18681e
+1c43e900-d091-471d-931d-740a0d18681e <-> 0bf9daa5-3f4f-4861-a181-40d13e44703e
+0bf9daa5-3f4f-4861-a181-40d13e44703e <-> 6fe1dcac-d9a0-4b77-8b97-055835b51324
